@@ -1,0 +1,12 @@
+﻿@using Microsoft.AspNetCore.Http
+@inject Microsoft.AspNetCore.Http.IHttpContextAccessor HttpContextAccessor
+@{
+    ViewData["Title"] = "Index";
+}
+
+
+@Html.Partial("Guide")
+<div class="main">
+    @Html.Partial("Menu")
+    @Html.Partial("Home")
+</div>

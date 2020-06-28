@@ -1,0 +1,50 @@
+﻿@using Microsoft.AspNetCore.Http
+@inject Microsoft.AspNetCore.Http.IHttpContextAccessor HttpContextAccessor
+@{
+    ViewData["Title"] = "Guide";
+}
+<div id="guide" class="guide">
+    <h1 class="title">Démarrage rapide @HttpContextAccessor.HttpContext.Session.GetString("env") </h1>
+    <ol class="steps">
+        <li class="step">
+            <h2 class="step__title">
+                <a href="https://developer.sage.com/api/100/fr/saas/quickstart/cloud-id/" target="_blank">Créez votre compte développeur Sage</a>
+            </h2>
+        </li>
+        <li class="step">
+            <h2 class="step__title">
+                <a href="https://developer.sage.com/api/100/fr/saas/quickstart/create-an-app/" target="_blank">Créez une application client</a>
+            </h2>
+            <div class="step__body">
+                En mentionnant cette URL de redirection :<br />
+                <code>http://localhost:8080/auth/callback</code>
+            </div>
+        </li>
+        <li class="step">
+            <h2 class="step__title">
+                Collez le Client Id et le Secret obtenus dans:
+            </h2>
+            <div class="step__body">
+                <code>app/client_application.json</code>
+            </div>
+        </li>
+        <li class="step">
+            <h2 class="step__title">
+                Qualifiez le nom de la société dans :
+            </h2>
+            <div class="step__body">
+                <code>app/client_application.json</code>
+            </div>
+        </li>
+        <li class="step">
+            <h2 class="step__title">
+                Cliquez sur le bouton Accueil<br />
+            </h2>
+        </li>
+        <li class="step">
+            <h2 class="step__title">
+                Cliquez sur le bouton Connexion
+            </h2>
+        </li>
+    </ol>
+</div>

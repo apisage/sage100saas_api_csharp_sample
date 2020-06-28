@@ -1,0 +1,24 @@
+﻿@using Microsoft.AspNetCore.Http
+@model app.Models.Customer
+@inject Microsoft.AspNetCore.Http.IHttpContextAccessor HttpContextAccessor
+@{
+    ViewData["Title"] = "Ajout";
+}
+
+@Html.Partial("Guide")
+
+<div class="main">
+    @Html.Partial("Menu")
+    <form id="request" class="request" action="Add" method="post">
+        <input class="field__input" type="hidden" id="resource" name="resource" value="clients" />
+        <input class="field__input" type="hidden" id="type" name="type" value="Client" />
+        <input class="field__input" type="hidden" id="id" name="id" value="" />
+        <div class="field_header">
+            <div class="titlepage">
+                <h2>Nouveau client</h2>
+            </div>
+            @Html.Partial("AddEdit")
+        </div>
+    </form>
+</div>
+

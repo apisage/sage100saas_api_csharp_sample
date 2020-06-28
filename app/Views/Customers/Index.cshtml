@@ -1,0 +1,26 @@
+﻿@using Microsoft.AspNetCore.Http
+@model app.Models.Customer
+@inject Microsoft.AspNetCore.Http.IHttpContextAccessor HttpContextAccessor
+@{
+    ViewData["Title"] = "Clients";
+}
+
+@Html.Partial("Guide")
+<div class="main">
+    @Html.Partial("Menu")
+    <form id="request" class="request" action="/Customers" method="post">
+        <div class="titlepage">
+            <h2>Consultation de clients</h2>
+        </div>
+        <div class="actionbutton">
+            <a id="afficherAjoutClient" href="/Customers/add" class="button secondary">Nouveau client</a>
+        </div>
+        <div class="field">
+            <div class="field__body">
+                <input type="search" class="field__input" list="clients" placeholder="contient dans intitulé ou numéro" id="searchTerm" name="searchTerm" autocomplete="off" value="@ViewBag.SearchTerm" />
+                <button class="button">Exécuter la requête</button>
+            </div>
+        </div>
+        @Html.Partial("Resp")
+    </form>
+</div>

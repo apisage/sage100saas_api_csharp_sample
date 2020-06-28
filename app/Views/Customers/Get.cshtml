@@ -1,0 +1,75 @@
+﻿@using Microsoft.AspNetCore.Http
+@model app.Models.Customer
+@inject Microsoft.AspNetCore.Http.IHttpContextAccessor HttpContextAccessor
+@{
+    ViewData["Title"] = "Details";
+}
+
+@Html.Partial("Guide")
+
+<div class="main">
+    @Html.Partial("Menu")
+    <div class="request">
+        <div class="titlepage">
+            <h2>Détail du client @Model.numero</h2>
+        </div>
+        <div class="actionbutton">
+            <a class="button" href="/Customers/edit/@Model.id">Modifier</a>
+        </div>
+        <table class="detailsClient" id="detailsClient" name="detailsClient" width="100%">
+            <tr> <td class="fieldBloc" colspan="4"> Détails </td> </tr>
+            <tr>
+                <td class="fieldTitle">  Compte tiers  </td>
+                <td class="fieldValue">  @Model.numero </td>
+                <td class="fieldTitle">  Compte principal  </td>
+                <td class="fieldValue">  @Model.comptePrincipal </td>
+            </tr>
+            <tr>
+                <td class="fieldTitle">  Intitule  </td>
+                <td class="fieldValue">  @Model.intitule  </td>
+                <td class="fieldTitle">  Abrégé  </td>
+                <td class="fieldValue">  @Model.classement  </td>
+            </tr>
+            <tr>
+                <td class="fieldTitle">  Interlocuteur  </td>
+                <td class="fieldValue">  @Model.contact  </td>
+                <td class="fieldTitle">  Qualité  </td>
+                <td class="fieldValue">  @Model.qualite  </td>
+            </tr>
+            <tr>
+                <td class="fieldTitle">  Commentaire  </td>
+                <td class="fieldValue">  @Model.commentaire  </td>
+            </tr>
+            <tr> <td class="fieldBloc" colspan="4"> Coordonnées </td> </tr>
+            <tr>
+                <td class="fieldTitle">  Téléphone  </td>
+                <td class="fieldValue">  @Model.telecom.telephone  </td>
+                <td class="fieldTitle">  Télécopie  </td>
+                <td class="fieldValue">  @Model.telecom.telecopie  </td>
+            </tr>
+            <tr>
+                <td class="fieldTitle">  Email  </td>
+                <td class="fieldValue">  @Model.telecom.eMail   </td>
+                <td class="fieldTitle">  Site internet  </td>
+                <td class="fieldValue">   @Model.telecom.site  </td>
+            </tr>
+            <tr>
+                <td class="fieldTitle">Adresse</td>
+                <td class="fieldValue">
+                    @Model.adresse.adresse<br />@Model.adresse.complement<br /> @Model.adresse.codePostal @Model.adresse.ville<br />  @Model.adresse.pays
+                </td>
+            </tr>
+            <tr> <td class="fieldBloc" colspan="4"> Immatriculation  </td> </tr>
+            <tr>
+                <td class="fieldTitle"> Siret  </td>
+                <td class="fieldValue">  @Model.siret  </td>
+                <td class="fieldTitle">  Code NAF  </td>
+                <td class="fieldValue"> @Model.ape  </td>
+            </tr>
+            <tr>
+                <td class="fieldTitle">  Identifiant TVA  </td>
+                <td class="fieldValue"> @Model.identifiant  </td>
+            </tr>
+        </table>
+    </div>
+</div>

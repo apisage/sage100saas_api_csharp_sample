@@ -1,0 +1,106 @@
+﻿@using Microsoft.AspNetCore.Http
+@model app.Models.Customer
+@inject Microsoft.AspNetCore.Http.IHttpContextAccessor HttpContextAccessor
+
+<div class="actionbutton">
+    <button class="button">Enregistrer</button>
+</div>
+
+@{
+    var Error = HttpContextAccessor.HttpContext.Session.GetString("error");
+    if (Error != null)
+    {
+        <p class="field__error">
+            @Error
+        </p>
+        HttpContextAccessor.HttpContext.Session.Clear();
+    }
+
+    var readOnly= (ViewBag.Action == "edit") ? "readonly" : "";
+}
+
+<table id="detailsClient" name="detailsClient" width="100%">
+    <tr> <td class="fieldBloc" colspan="4"> Détails </td> </tr>
+    <tr>
+        <td class="fieldTitle">  Compte tiers  </td>
+        <td class="fieldValueInput"> <input class="field__input" name="numero" value="@Model.numero" @readOnly> </td>
+        <td class="fieldTitle">  Compte principal  </td>
+        <td class="fieldValueInput">
+            <div class="select-style">
+                <select class="field__input" id="comptePrincipal" name="comptePrincipal">
+                    @foreach (var account in ViewBag.Accounts)
+                    {
+                        var id = account["id"];
+                        var numero = (string)account["numero"];
+                        if (Model.comptePrincipal != null && Model.comptePrincipal.Equals(numero))
+                        {
+                            <option selected="selected" value="@id"> @numero </option>
+                        }
+                        else
+                        {
+                            <option value="@id"> @numero  </option>
+                        }
+                    }
+                </select>
+            </div>
+        </td>
+    </tr>
+    <tr>
+        <td class="fieldTitle">  Intitule  </td>
+        <td class="fieldValueInput"> <input class="field__input" id="intitule" name="intitule" value="@Model.intitule"> </td>
+        <td class="fieldTitle">  Abrégé  </td>
+        <td class="fieldValueInput"> <input class="field__input" id="classement" name="classement" value="@Model.classement"> </td>
+    </tr>
+    <tr>
+        <td class="fieldTitle">  Interlocuteur  </td>
+        <td class="fieldValueInput"> <input class="field__input" id="contact" name="contact" value="@Model.contact"> </td>
+        <td class="fieldTitle">  Qualité  </td>
+        <td class="fieldValueInput"> <input class="field__input" id="qualite" name="qualite" value="@Model.qualite"> </td>
+    </tr>
+    <tr>
+        <td class="fieldTitle">  Commentaire  </td>
+        <td class="fieldValueInput"> <input class="field__input" id="commentaire" name="commentaire" value="@Model.commentaire"> </td>
+    </tr>
+    <tr> <td class="fieldBloc" colspan="4">  Coordonnées </td> </tr>
+    <tr>
+        <td class="fieldTitle">  Téléphone  </td>
+        <td class="fieldValueInput"> <input class="field__input" id="telephone" name="telephone" value="@Model.telecom.telephone"> </td>
+        <td class="fieldTitle">  Télécopie  </td>
+        <td class="fieldValueInput"> <input class="field__input" id="telephone" name="telecopie" value="@Model.telecom.telecopie"> </td>
+    </tr>
+    <tr>
+        <td class="fieldTitle">  Email  </td>
+        <td class="fieldValueInput"> <input class="field__input" id="eMail" name="eMail" value="@Model.telecom.eMail"> </td>
+        <td class="fieldTitle">  Site internet  </td>
+        <td class="fieldValueInput"> <input class="field__input" id="site" name="site" value="@Model.telecom.site"> </td>
+    </tr>
+    <tr>
+        <td class="fieldTitle">  Adresse  </td>
+        <td class="fieldValueInput"> <input class="field__input" id="site" name="adresse" value="@Model.adresse.adresse"> </td>
+        <td class="fieldTitle">  Code postal  </td>
+        <td class="fieldValueInput"> <input class="field__input" id="codePostal" name="codePostal" value="@Model.adresse.codePostal"> </td>
+    </tr>
+    <tr>
+        <td class="fieldTitle">  Complément  </td>
+        <td class="fieldValueInput"> <input class="field__input" id="complement" name="complement" value="@Model.adresse.complement"> </td>
+        <td class="fieldTitle">  Ville  </td>
+        <td class="fieldValueInput"> <input class="field__input" id="ville" name="ville" value="@Model.adresse.ville"> </td>
+    </tr>
+    <tr>
+        <td class="fieldTitle">  Code Région  </td>
+        <td class="fieldValueInput"> <input class="field__input" id="codeRegion" name="codeRegion" value="@Model.adresse.codeRegion"> </td>
+        <td class="fieldTitle">  Pays  </td>
+        <td class="fieldValueInput"> <input class="field__input" id="pays" name="pays" value="@Model.adresse.pays"> </td>
+    </tr>
+    <tr> <td class="fieldBloc" colspan="4">Immatriculation  </td> </tr>
+    <tr>
+        <td class="fieldTitle"> Siret  </td>
+        <td class="fieldValueInput"> <input class="field__input" id="siret" name="siret" value="@Model.siret"> </td>
+        <td class="fieldTitle">  Code NAF  </td>
+        <td class="fieldValueInput"> <input class="field__input" id="ape" name="ape" value="@Model.ape"> </td>
+    </tr>
+    <tr>
+        <td class="fieldTitle">  Identifiant TVA  </td>
+        <td class="fieldValueInput"> <input class="field__input" id="identifiant" name="identifiant" value="@Model.identifiant"> </td>
+    </tr>
+</table>

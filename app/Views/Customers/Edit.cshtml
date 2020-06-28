@@ -1,0 +1,21 @@
+﻿@using Microsoft.AspNetCore.Http
+@model app.Models.Customer
+@inject Microsoft.AspNetCore.Http.IHttpContextAccessor HttpContextAccessor
+@{
+    ViewData["Title"] = "Edit";
+}
+
+@Html.Partial("Guide")
+
+<div class="main">
+    @Html.Partial("Menu")
+    <form id="request" class="request" action="Edit" method="post">
+        <input class="field__input" type="hidden" id="id" name="id" value="@Model.id" />
+        <input class="field__input" type="hidden" id="type" name="type" value="Client" />
+        <div class="titlepage">
+            <h2>Modifier le client @Model.numero</h2>
+        </div>
+        @Html.Partial("AddEdit")
+    </form>
+</div>
+

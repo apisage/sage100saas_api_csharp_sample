@@ -1,0 +1,36 @@
+﻿@using Microsoft.AspNetCore.Http
+@{
+
+    ViewData["Title"] = "Index";
+}
+<div class="menu">
+    <a class="button addspinner" href="/">Accueil</a>
+
+    @if (!Startup.getPathOfConfigFile().Equals(""))
+    {
+        if (!User.Identity.IsAuthenticated)
+        {
+            <a class="button addspinner" asp-controller="Authentification" asp-action="Login">Connexion</a>
+        }
+        else
+        {
+            <a class="button addspinner" asp-controller="Authentification" asp-action="Logout">Déconnexion</a>
+            if (!String.IsNullOrEmpty(Context.Session.GetString("companyId")))
+            {
+                <a class="button addspinner" href="/Request">Requêtes</a>
+                <a class="button addspinner" href="/Customers">Clients</a>
+                <a class="button addspinner" href="/Import">Import</a>
+                <div class="companyname">@Context.Session.GetString("companyName")</div>
+            }
+        }
+    }
+
+    <a class="button secondary" href="https://developer.sage.com/api/100/fr/saas/guides/samples/samplecharp/" target="_blank">Aide</a>
+</div>
+
+<div class="spinner">
+    <img src="~/spinner.svg" />
+</div>
+<span class="BETA">BETA</span>
+
+<script src="~/scripts.js"></script>

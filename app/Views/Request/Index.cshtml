@@ -1,0 +1,212 @@
+﻿@using Microsoft.AspNetCore.Http
+@model app.Models.Request
+@inject Microsoft.AspNetCore.Http.IHttpContextAccessor HttpContextAccessor
+@{
+    ViewData["Title"] = "Request";
+}
+
+@Html.Partial("Guide")
+<div class="main">
+    @Html.Partial("Menu")
+    <form id="request" class="request" action="Request" method="post">
+        <div class="titlepage">
+            <h2>Test des requêtes de l'API</h2>
+        </div>
+        <div class="actionbutton">
+            <a class="button secondary" href="https://developer.sage.com/api/100/fr/saas/ressources/" target="targetapi">Ressources</a>
+            <a class="button secondary" href="https://developer.sage.com/api/100/fr/saas/guides/samples/sampleodataapi/" target="targetsample">Exemples</a>
+            <a class="button secondary" href="https://developer.sage.com/api/100/fr/saas/concepts/" target="targetconcepts">Concepts</a>
+            <button class="button">Exécuter la requête</button>
+        </div>
+ 
+
+        <table name="api_building_array" width="100%">
+            <caption class="request_url" align="bottom" id="caption">
+                https://api-dev-sage100saas.sagedatacloud.com/@HttpContextAccessor.HttpContext.Session.GetString("API_URL")<strong id='caption_societeID'>&lt;SociétéID&gt;</strong>/<strong id='caption_resource'>&lt;Resource&gt;</strong>
+            </caption>
+            <tr>
+                <td class="field">
+                    <label class="field__label" for="http_verb">Méthode de la requête</label>
+                </td>
+                <td class="field">
+                    <label class="field__label" for="company">Société</label>
+                </td>
+                <td class="field">
+                    <label class="field__label" for="resource">Point de terminaison de la requête</label>
+                </td>
+            </tr>
+            <tr>
+                <td class="field">
+                    <div class="field__body">
+                        <select class="field__input" id="http_verb" name="http_verb" onchange="displayQueryOptions()">
+                            <option value="get">GET</option>
+                        </select>
+                    </div>
+                </td>
+                <td class="field">
+                    <div class="field__body">
+                        <select class="field__input" onchange="updateCaption(this.options[this.selectedIndex].value, 'caption_societeID')" id="company" name="company" list="company">
+                            @{
+                                string name;
+                                string id;
+                                var companies = ViewBag.Companies;
+                                if (companies != null)
+                                {
+                                    var reqCompany = Model.Company;
+                                    foreach (var company in companies)
+                                    {
+                                        name = company["name"];
+                                        id = company["id"];
+                                        if (id.Equals(reqCompany))
+                                        {
+                                            <option selected="selected" label="@name"> @id  </option>
+                                        }
+                                        else
+                                        {
+                                            <option label="@name"> @id </option>
+                                        }
+
+                                    }
+                                }
+                            }
+                        </select>
+                    </div>
+                </td>
+                <td class="field">
+                    <div class="field__body">
+                        <select class="field__input" id="resources" onchange="updateCaption(this.value, 'caption_resource')" name="resource">
+                            @{
+                                var endpoints = ViewBag.Endpoints;
+                                if (endpoints != null)
+                                {
+                                    var resource = Model.Resource;
+                                    <option> </option>
+                                    foreach (var endpoint in endpoints)
+                                    {
+                                        if (endpoint.Equals(resource))
+                                        {
+                                            <option selected="selected"> @endpoint </option>
+                                        }
+                                        else
+                                        {
+                                            <option> @endpoint </option>
+                                        }
+                                    }
+                                }
+                            }
+                        </select>
+                    </div>
+                </td>
+            </tr>
+        </table>
+
+        <table id="query_options" width="100%">
+            <tr class="field">
+                <td>
+                    <label class="field__label" for="expand"> $expand </label>
+                </td>
+                <td class="field__body">
+                    <input class="field__input" value="@Model.Expand" id="expand" name="expand" />
+
+                </td>
+            </tr>
+            <tr class="field">
+                <td>
+                    <label class="field__label" for="filter"> $filter </label>
+                </td>
+                <td class="field__body">
+                    <input class="field__input" value="@Model.Filter" id="filter" name="filter" />
+
+                </td>
+            </tr>
+            <tr class="field">
+                <td>
+                    <label class="field__label" for="filter"> $select </label>
+                </td>
+                <td class="field__body">
+                    <input class="field__input" value="@Model.Select" id="select" name="select" />
+                </td>
+            </tr>
+            <tr class="field">
+                <td>
+                    <label class="field__label" for="orderby"> $orderby </label>
+                </td>
+                <td class="field__body">
+                    <input class="field__input" value="@Model.Orderby" id="orderby" name="orderby" />
+                </td>
+            </tr>
+            <tr class="field">
+                <td>
+                    <label class="field__label" for="top"> $top </label>
+                </td>
+                <td class="field__body">
+                    <input class="field__input" value="@Model.Top" id="top" name="top" />
+                </td>
+            </tr>
+            <tr class="field">
+                <td>
+                    <label class="field__label" for="skip"> $skip </label>
+                </td>
+                <td class="field__body">
+                    <input class="field__input" value="@Model.Skip" id="skip" name="skip" />
+                </td>
+            </tr>
+            <tr class="field">
+                <td>
+                    <label class="field__label" for="count"> $count </label>
+                </td>
+                <td class="field__body">
+                    <input class="field__input" value="@Model.Count" id="count" name="count" />
+                </td>
+            </tr>
+        </table>
+        <script>
+
+            // Update caption under the api_building_array.
+            function updateCaption(value, domID) {
+                var element = document.getElementById(domID);
+                if (value == 0) {
+
+                    element.innerText = "Resource";
+                }
+                else {
+                    element.innerText = value;
+                }
+
+            }
+
+            // Display query options filters when selecting GET method.
+            function displayQueryOptions() {
+                var verb = document.getElementById("http_verb");
+                var selected_verb = verb.options[verb.selectedIndex].value;
+                var query_options = document.getElementById("query_options");
+                if (selected_verb == "get") {
+                    query_options.style.display = 'table';
+                }
+                else {
+                    query_options.style.display = 'none';
+                }
+            }
+        </script>
+    </form>
+
+    <!--<a class="button is-centered" href="@HttpContextAccessor.HttpContext.Session.GetString("BaseUrl")/login">Authorize API access</a>-->
+    @if (Model.RespBody != null)
+    {
+        <div id="response" class="request">
+            <div class="field">
+                <label class="field__label">Code réponse</label>
+                <div class="field__body">
+                    <input class="field__input" readonly value="@Model.RespStatusCode" />
+                </div>
+            </div>
+
+            <div class="field">
+                <label class="field__label">Réponse de la requête</label>
+                <div class="field__body">
+                    <textarea class="field__input response__body" readonly>@Model.RespBody</textarea>
+                </div>
+            </div>
+        </div>
+    }
+</div>
