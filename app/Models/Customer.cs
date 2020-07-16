@@ -1,74 +1,58 @@
-﻿using System;
-using Microsoft.AspNetCore.Http;
-using Microsoft.AspNetCore;
-using Newtonsoft.Json.Linq;
-using System.Collections.Generic;
-using System.ComponentModel;
-using System.ComponentModel.DataAnnotations;
-using Microsoft.AspNetCore.Mvc.ModelBinding;
-using Microsoft.AspNetCore.Mvc;
+﻿using System.ComponentModel.DataAnnotations;
 using Newtonsoft.Json;
 
 namespace app.Models
 {
     public class Customer
     {
-        [DisplayFormat(ConvertEmptyStringToNull = false)]
-        public string commentaire { get; set; }
-        [DisplayFormat(ConvertEmptyStringToNull = false)]
-        public string siret { get; set; }
-        [DisplayFormat(ConvertEmptyStringToNull = false)]
-        public string identifiant { get; set; }
-        [DisplayFormat(ConvertEmptyStringToNull = false)]
-        public string ape { get; set; }
-        [DisplayFormat(ConvertEmptyStringToNull = false)]
-        public string contact { get; set; }
-        [DisplayFormat(ConvertEmptyStringToNull = false)]
-        public string classement { get; set; }
-        [DisplayFormat(ConvertEmptyStringToNull = false)]
-        public string qualite { get; set; }
-        [DisplayFormat(ConvertEmptyStringToNull = false)]
-        public string intitule { get; set; }
-        [DisplayFormat(ConvertEmptyStringToNull = false)]
-        public string type { get; set; }
-        [DisplayFormat(ConvertEmptyStringToNull = false)]
-        public string numero { get; set; }
+        [JsonProperty("commentaire"), DisplayFormat(ConvertEmptyStringToNull = false)]
+        public string Commentaire { get; set; }
+        [JsonProperty("siret"), DisplayFormat(ConvertEmptyStringToNull = false)]
+        public string Siret { get; set; }
+        [JsonProperty("identifiant"), DisplayFormat(ConvertEmptyStringToNull = false)]
+        public string Identifiant { get; set; }
+        [JsonProperty("ape"), DisplayFormat(ConvertEmptyStringToNull = false)]
+        public string Ape { get; set; }
+        [JsonProperty("contact"), DisplayFormat(ConvertEmptyStringToNull = false)]
+        public string Contact { get; set; }
+        [JsonProperty("classement"), DisplayFormat(ConvertEmptyStringToNull = false)]
+        public string Classement { get; set; }
+        [JsonProperty("qualite"), DisplayFormat(ConvertEmptyStringToNull = false)]
+        public string Qualite { get; set; }
+        [JsonProperty("intitule"), DisplayFormat(ConvertEmptyStringToNull = false)]
+        public string Intitule { get; set; }
+        [JsonProperty("type"), DisplayFormat(ConvertEmptyStringToNull = false)]
+        public string Type { get; set; }
+        [JsonProperty("numero"), DisplayFormat(ConvertEmptyStringToNull = false)]
+        public string Numero { get; set; }
         [JsonProperty("comptePrincipal@odata.bind"), DisplayFormat(ConvertEmptyStringToNull = false)]
-        public string comptePrincipal { get; set; }
+        public string ComptePrincipal { get; set; }
 
-        [DisplayFormat(ConvertEmptyStringToNull = false)]
-        public string id { get; set; }
-
-        public Adresse adresse { get; set; }
-        public Telecom telecom { get; set; }
-
-        public class Adresse
+        [JsonProperty("id"), DisplayFormat(ConvertEmptyStringToNull = false)]
+        public string Id { get; set; }
+        public Address Adresse { get; set; }
+        public Telecom Telecom { get; set; }
+        
+        public static bool IsEmpty(Customer customer)
         {
-            [DisplayFormat(ConvertEmptyStringToNull = false)]
-            public string complement { get; set; }
-            [JsonProperty("codePostal"), DisplayFormat(ConvertEmptyStringToNull = false)]
-            public string codePostal { get; set; }
-            [DisplayFormat(ConvertEmptyStringToNull = false)]
-            public string adresse { get; set; }
-            [DisplayFormat(ConvertEmptyStringToNull = false)]
-            public string ville { get; set; }
-            [DisplayFormat(ConvertEmptyStringToNull = false)]
-            [JsonProperty("pays")]
-            public string pays { get; set; }
-            [JsonProperty("codeRegion"), DisplayFormat(ConvertEmptyStringToNull = false)]
-            public string codeRegion { get; set; }
+            string empty = string.Empty;
+            bool numero = empty.Equals(customer.Numero);
+            bool type = empty.Equals(customer.Type);
+            bool intitule = empty.Equals(customer.Intitule);
+
+            return numero || type || intitule;
         }
 
-        public class Telecom
+        public static bool IsNull(Customer customer)
         {
-            [DisplayFormat(ConvertEmptyStringToNull = false)]
-            public string telephone { get; set; }
-            [DisplayFormat(ConvertEmptyStringToNull = false)]
-            public string telecopie { get; set; }
-            [DisplayFormat(ConvertEmptyStringToNull = false)]
-            public string site { get; set; }
-            [DisplayFormat(ConvertEmptyStringToNull = false)]
-            public string eMail { get; set; }
+            bool numero = (null == customer.Numero);
+            bool type = (null == customer.Type);
+            bool intitule = (null == customer.Intitule);
+
+            return (numero || type || intitule);
+        }
+        public Customer()
+        {
         }
     }
 }

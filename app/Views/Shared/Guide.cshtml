@@ -1,10 +1,9 @@
-﻿@using Microsoft.AspNetCore.Http
-@inject Microsoft.AspNetCore.Http.IHttpContextAccessor HttpContextAccessor
+﻿@inject Microsoft.AspNetCore.Http.IHttpContextAccessor HttpContextAccessor
 @{
     ViewData["Title"] = "Guide";
 }
 <div id="guide" class="guide">
-    <h1 class="title">Démarrage rapide @HttpContextAccessor.HttpContext.Session.GetString("env") </h1>
+    <h1 class="title">Démarrage rapide @app.Settings.ApplicationSettings.CompanyName </h1>
     <ol class="steps">
         <li class="step">
             <h2 class="step__title">

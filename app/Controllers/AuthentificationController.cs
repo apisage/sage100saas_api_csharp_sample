@@ -1,11 +1,4 @@
-﻿using System;
-using System.Collections.Generic;
-using System.Globalization;
-using System.Linq;
-using System.Security.Claims;
-using System.Security.Principal;
-using System.Threading.Tasks;
-using app.Repositories;
+﻿using System.Threading.Tasks;
 using Microsoft.AspNetCore.Authentication;
 using Microsoft.AspNetCore.Authentication.Cookies;
 using Microsoft.AspNetCore.Authorization;
@@ -20,7 +13,7 @@ namespace app.Controllers
         {
             if (!User.Identity.IsAuthenticated)
             {
-                await HttpContext.ChallengeAsync("Auth0", new AuthenticationProperties() { RedirectUri = Url.Action("Index", "Home") });
+                await HttpContext.ChallengeAsync("SageId", new AuthenticationProperties() { RedirectUri = Url.Action("Index", "Home") });
             }
         }
 
@@ -28,7 +21,7 @@ namespace app.Controllers
         public async Task Logout()
         {
             await HttpContext.SignOutAsync(CookieAuthenticationDefaults.AuthenticationScheme);
-            await HttpContext.SignOutAsync("Auth0", new AuthenticationProperties());
+            await HttpContext.SignOutAsync("SageId", new AuthenticationProperties());
         }
     }
 }

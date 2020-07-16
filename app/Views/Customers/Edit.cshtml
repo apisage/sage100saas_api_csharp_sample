@@ -5,17 +5,17 @@
     ViewData["Title"] = "Edit";
 }
 
-@Html.Partial("Guide")
+<partial name="Guide" />
 
 <div class="main">
-    @Html.Partial("Menu")
+    <partial name="Menu" />
     <form id="request" class="request" action="Edit" method="post">
-        <input class="field__input" type="hidden" id="id" name="id" value="@Model.id" />
+        <input class="field__input" type="hidden" id="id" name="id" value="@Model.Id" />
         <input class="field__input" type="hidden" id="type" name="type" value="Client" />
         <div class="titlepage">
-            <h2>Modifier le client @Model.numero</h2>
+            <h2>Modifier le client @Model.Numero</h2>
         </div>
-        @Html.Partial("AddEdit")
+        <partial name="AddEdit" />
     </form>
 </div>
 

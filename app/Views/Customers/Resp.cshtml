@@ -1,5 +1,4 @@
-﻿
-@{
+﻿@{
     ViewData["Title"] = "Resp";
 }
 
@@ -11,18 +10,19 @@
     <caption class="pagination" align="bottom" id="caption">
         @{
             var clients = ViewBag.Clients;
-
+            var resultsByPage = ViewBag.ResultsByPage;
             var patternSearchTerm = (string.IsNullOrEmpty(ViewBag.SearchTerm)) ? null : "(?<searchTerm>" + ViewBag.SearchTerm + ")";
-            var number = clients["@odata.count"] ?? "0";
-            var currentPage = (int)(ViewBag.CurrentPage / 10) + 1;
-            var noPages = (int)(number / 10);
-            // Cas où il y a 0, 10, 20... résultats.
-            noPages = ((int)number % 10 == 0) ? noPages : noPages + 1;
+            var number = ViewBag.Results;
+            var currentPage = (ViewBag.CurrentPage / resultsByPage) + 1;
+            var noPages = (number / resultsByPage);
+            // Cas où le reste du nombre de résultats total / nombre de résultats par pages est égal à 0.
+            noPages = (number % resultsByPage == 0) ? noPages : noPages + 1;
             var secondary = string.Empty;
+
             for (int page = 1; page <= noPages; page++)
             {
                 secondary = (page != currentPage) ? "secondary" : "";
-                @:<button class="button @secondary" name="skip" value="@Html.Raw(((page-1) * 10).ToString())"> @Html.Raw(page.ToString()) </button>
+                @:<button class="button @secondary" name="skip" value="@Html.Raw(((page-1) * resultsByPage).ToString())"> @Html.Raw(page.ToString()) </button>
             }
         }
         <div class="nbresult">

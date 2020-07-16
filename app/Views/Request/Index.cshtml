@@ -5,9 +5,10 @@
     ViewData["Title"] = "Request";
 }
 
-@Html.Partial("Guide")
+<partial name="Guide" />
+
 <div class="main">
-    @Html.Partial("Menu")
+    <partial name="Menu" />
     <form id="request" class="request" action="Request" method="post">
         <div class="titlepage">
             <h2>Test des requêtes de l'API</h2>
@@ -18,11 +19,11 @@
             <a class="button secondary" href="https://developer.sage.com/api/100/fr/saas/concepts/" target="targetconcepts">Concepts</a>
             <button class="button">Exécuter la requête</button>
         </div>
- 
+
 
         <table name="api_building_array" width="100%">
             <caption class="request_url" align="bottom" id="caption">
-                https://api-dev-sage100saas.sagedatacloud.com/@HttpContextAccessor.HttpContext.Session.GetString("API_URL")<strong id='caption_societeID'>&lt;SociétéID&gt;</strong>/<strong id='caption_resource'>&lt;Resource&gt;</strong>
+                https://api-demo-sage100saas.sagedatacloud.com/<strong id='caption_societeID'>&lt;SociétéID&gt;</strong>/<strong id='caption_resource'>&lt;Resource&gt;</strong>
             </caption>
             <tr>
                 <td class="field">
@@ -172,25 +173,10 @@
                 else {
                     element.innerText = value;
                 }
-
-            }
-
-            // Display query options filters when selecting GET method.
-            function displayQueryOptions() {
-                var verb = document.getElementById("http_verb");
-                var selected_verb = verb.options[verb.selectedIndex].value;
-                var query_options = document.getElementById("query_options");
-                if (selected_verb == "get") {
-                    query_options.style.display = 'table';
-                }
-                else {
-                    query_options.style.display = 'none';
-                }
             }
         </script>
     </form>
 
-    <!--<a class="button is-centered" href="@HttpContextAccessor.HttpContext.Session.GetString("BaseUrl")/login">Authorize API access</a>-->
     @if (Model.RespBody != null)
     {
         <div id="response" class="request">

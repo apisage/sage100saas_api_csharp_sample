@@ -8,11 +8,11 @@ using Microsoft.AspNetCore.Hosting;
 using Microsoft.AspNetCore.Http;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
-using Microsoft.IdentityModel.Protocols.OpenIdConnect;
 using Newtonsoft.Json;
 using Newtonsoft.Json.Linq;
 using app.Settings;
-using app.Repositories;
+using Microsoft.Extensions.Hosting;
+using Microsoft.IdentityModel.Protocols.OpenIdConnect;
 
 namespace app
 {
@@ -28,7 +28,7 @@ namespace app
 
         const string AUTHORITY = "id-shadow.sage.com";
         const string AUDIENCE = "fr100saas/api.pub";
-    
+
         // This method gets called by the runtime. Use this method to add services to the container.
         public void ConfigureServices(IServiceCollection services)
         {
@@ -55,14 +55,14 @@ namespace app
                 options.DefaultChallengeScheme = CookieAuthenticationDefaults.AuthenticationScheme;
             })
             .AddCookie()
-            .AddOpenIdConnect("Auth0", options =>
+            .AddOpenIdConnect("SageId", options =>
             {
-                // Set the authority to your Auth0 domain
-                options.Authority = $"https://" + AUTHORITY;
+                // Set the authority to your SageId domain
+                options.Authority = $"https://{AUTHORITY}";
 
-                // Configure the Auth0 Client ID and Client Secret
-                options.ClientId = ApplicationSettings.client_id;
-                options.ClientSecret = ApplicationSettings.client_secret;
+                // Configure the SageId Client ID and Client Secret
+                options.ClientId = ApplicationSettings.ClientId;
+                options.ClientSecret = ApplicationSettings.ClientSecret;
 
                 // Set response type to code
                 options.ResponseType = OpenIdConnectResponseType.Code;
@@ -85,16 +85,16 @@ namespace app
                 options.Scope.Add("History.Accounting.Write.All");
                 options.Scope.Add("History.Accounting.Read.All");
 
-                // Set the callback path, so Auth0 will call back to http://localhost:3000/callback
-                // Also ensure that you have added the URL as an Allowed Callback URL in your Auth0 dashboard
-                if (!String.IsNullOrEmpty(ApplicationSettings.callback_url))
+                // Set the callback path, so SageId will call back to http://localhost:3000/callback
+                // Also ensure that you have added the URL as an Allowed Callback URL in your SageId dashboard
+                if (!String.IsNullOrEmpty(ApplicationSettings.CallbackUrl))
                 {
-                    var uri = new UriBuilder(ApplicationSettings.callback_url);
+                    var uri = new UriBuilder(ApplicationSettings.CallbackUrl);
                     options.CallbackPath = new PathString(uri.Path);
                 }
-                
-                // Configure the Claims Issuer to be Auth0
-                options.ClaimsIssuer = "Auth0";
+
+                // Configure the Claims Issuer to be SageId
+                options.ClaimsIssuer = "SageId";
                 options.SaveTokens = true;
                 options.Events = new OpenIdConnectEvents
                 {
@@ -132,7 +132,7 @@ namespace app
         }
 
         // This method gets called by the runtime. Use this method to configure the HTTP request pipeline.
-        public void Configure(IApplicationBuilder app, IHostingEnvironment env)
+        public void Configure(IApplicationBuilder app, IWebHostEnvironment env)
         {
             if (env.IsDevelopment())
             {
@@ -146,34 +146,40 @@ namespace app
             app.UseStaticFiles();
             app.UseSession();
             app.UseCookiePolicy();
+            app.UseRouting();
             app.UseAuthentication();
-            app.UseMvc(routes =>
-              {
-                  routes.MapRoute(
-                      name: "default",
-                      template: "{controller=Home}/{action=Index}"
-                  );
-                  routes.MapRoute(
-                     name: "request",
-                     template: "{controller=Request}/{action=Index}"
-                  );
-                  routes.MapRoute(
+            app.UseAuthorization();
+            app.UseEndpoints(endpoints =>
+            {
+                endpoints.MapControllerRoute(
+                    name: "default",
+                    pattern: "{controller=Home}/{action=Index}"
+                );
+                endpoints.MapControllerRoute(
+                    name: "request",
+                    pattern: "{controller=Request}/{action=Index}"
+                );
+                endpoints.MapControllerRoute(
                     name: "customer",
-                    template: "{controller=Customers}/{action=Index}"
-                    );
-                  routes.MapRoute(
-                  name: "customerAdd",
-                  template: "{controller=Customers}/{action=Add}"
-                  );
-                  routes.MapRoute(
+                    pattern: "{controller=Customers}/{action=Index}"
+                );
+                endpoints.MapControllerRoute(
+                    name: "customerAdd",
+                    pattern: "{controller=Customers}/{action=Add}"
+                );
+                endpoints.MapControllerRoute(
                     name: "import",
-                    template: "{controller=Import}/{action=Index}"
-                    );
-              });
+                    pattern: "{controller=Import}/{action=Index}"
+                );
+                endpoints.MapControllerRoute(
+                    name: "error",
+                    pattern: "{controller=Home}/{action=Error}"
+                );
+            });
         }
 
         //Recherche le fichier client_application.json dans la racine ou dans app/
-        public static String getPathOfConfigFile()
+        public static string GetPathOfConfigFile()
         {
             if (System.IO.File.Exists(Path.Combine(Directory.GetCurrentDirectory(), "client_application.json")))
             {
@@ -188,19 +194,19 @@ namespace app
 
         private static void InitializeApplicationSettings()
         {
-            ApplicationSettings.client_id = "default";
+            ApplicationSettings.ClientId = "default";
 
-            var settingsPath = Startup.getPathOfConfigFile();
+            var settingsPath = Startup.GetPathOfConfigFile();
             if (!String.IsNullOrEmpty(settingsPath))
             {
                 StreamReader file = File.OpenText(settingsPath);
                 using (JsonTextReader reader = new JsonTextReader(file))
                 {
                     JObject configObj = (JObject)JToken.ReadFrom(reader);
-                    ApplicationSettings.client_id = (string)configObj["config"]["client_id"];
-                    ApplicationSettings.client_secret = (string)configObj["config"]["client_secret"];
-                    ApplicationSettings.callback_url = (string)configObj["config"]["callback_url"];
-                    ApplicationSettings.company_name = (string)configObj["config"]["company_name"];
+                    ApplicationSettings.ClientId = (string)configObj["config"]["client_id"];
+                    ApplicationSettings.ClientSecret = (string)configObj["config"]["client_secret"];
+                    ApplicationSettings.CallbackUrl = (string)configObj["config"]["callback_url"];
+                    ApplicationSettings.CompanyName = (string)configObj["config"]["company_name"];
                 }
             }
         }

@@ -6,8 +6,11 @@ using Newtonsoft.Json.Linq;
 using Newtonsoft.Json;
 using app.Models;
 using app.Repositories;
-using System.Reflection;
 using Microsoft.AspNetCore.Authentication;
+using Newtonsoft.Json.Serialization;
+using app.Settings;
+using System.Net;
+using Microsoft.Extensions.Options;
 
 namespace app.Controllers
 {
@@ -19,35 +22,73 @@ namespace app.Controllers
         /// Affiche la vue principale Customers.
         /// </summary>
         /// <returns> La vue Customers. </returns>
-        public IActionResult Index(string searchTerm = "", string skip = "0")
+        [ResponseCache(Duration = 0, Location = ResponseCacheLocation.None, NoStore = true)]
+        public IActionResult Index(string searchTerm = "", string skip = "0", string top = "10")
         {
-            // Construction de la requête de recherche OData.
-            Dictionary<string, string> options = new Dictionary<string, string>();
-            var qry_count = "true";
-            var qry_skip = skip ?? "0";
-            var qry_filter = (string.IsNullOrEmpty(searchTerm)) ?null: "contains(tolower(intitule), '" + searchTerm.ToLower() + "') or contains(tolower(numero), '" + searchTerm.ToLower() + "')";
-            var qry_orderby = "intitule,numero";
-            options.Add("$count", qry_count);
-            options.Add("$skip", qry_skip);
-            if (qry_filter != null) options.Add("$filter", qry_filter);
-            options.Add("$orderby", qry_orderby);
-            options.Add("$top", "10");
-
-            // Token.
+            // Persistence du token et de la société.
             string accessToken = HttpContext.GetTokenAsync("access_token").Result;
             var repository = APIRepository.Create(accessToken);
-            if (string.IsNullOrEmpty(accessToken))
+
+            var companyId = ApplicationSettings.CompanyId;
+            if (string.IsNullOrEmpty(accessToken) || string.IsNullOrEmpty(companyId))
             {
-                HttpContext.Response.Redirect("/");
-                return View();
+                Error error = new Error(string.Empty, (int)HttpStatusCode.Unauthorized);
+                return View("Error", error);
             }
 
-            // Récupération des clients.
-            ViewBag.Clients = repository.Get(HttpContext.Session.GetString("companyId"), _resourceName, options).GetJSONResult();
+            // Construction de la requête de recherche OData.
+            // [API04] Récupération des clients selon le champ de recherche.
+            Dictionary<string, string> options = new Dictionary<string, string>();
+            var qryCount = "true";
+            var qrySkip = skip ?? "0";
+            var qryTop = "0";
+            var qryOrderby = "intitule,numero";
+            var qrySelect = "id,intitule,numero,adresse,telecom/telephone";
+            var qryFilter = (string.IsNullOrEmpty(searchTerm)) ? null : "contains(tolower(intitule), '{searchTerm}') or contains(tolower(numero), '{searchTerm}')";
+            options.Add("$count", qryCount);
+            options.Add("$top", qryTop);
+
+            if (!string.IsNullOrEmpty(qryFilter))
+            {
+                qryFilter = qryFilter.Replace("{searchTerm}", searchTerm.ToLower());
+                options.Add("$filter", qryFilter);
+            }
+
+            // Une requête avec count séparé est avantageux pour les performances.
+            var messageCount = repository.Get(companyId, _resourceName, options);
+
+            if (!Tools.IsSuccess(messageCount))
+            {
+                var details = "Désolé ! La liste des clients n'a pas pu être récupéré.";
+                Error error = new Error(details);
+
+                return View("Error", error);
+            }
+
+            var count = messageCount.GetJSONResult()["@odata.count"].ToString();
+            options["$top"] = top;
+            options.Remove("$count");
+            options.Add("$skip", qrySkip);
+            options.Add("$orderby", qryOrderby);
+            options.Add("$select", qrySelect);
+            var message = repository.Get(companyId, _resourceName, options);
+
+            if (!Tools.IsSuccess(message))
+            {
+                var details = "Désolé ! La liste des clients n'a pas pu être récupéré.";
+                Error error = new Error(details);
+
+                return View("Error", error);
+            }
+
+            ViewBag.Results = Int32.Parse(count);
+            ViewBag.ResultsByPage = Int32.Parse(top);
+            ViewBag.Clients = message.GetJSONResult();
             ViewBag.SearchTerm = searchTerm;
             ViewBag.options = options;
-            var page = Int32.Parse(qry_skip);
+            var page = Int32.Parse(qrySkip);
             ViewBag.CurrentPage = (page != 0) ? (page) : 1;
+
             return View();
         }
 
@@ -55,80 +96,111 @@ namespace app.Controllers
         /// Affiche et gère la formulaire d'ajout de Customer.
         /// </summary>
         /// <returns> La vue avec le nouveau Customer. </returns>
-        [Route("Customers/add")]
-        public IActionResult Add(Customer customer, Customer.Adresse address, Customer.Telecom telecom)
+        [Route("Customers/add"), ResponseCache(Duration = 0, Location = ResponseCacheLocation.None, NoStore = true)]
+        public IActionResult Add(Customer customer, Address address, Telecom telecom)
         {
-            // Remplissage de la liste déroulante avec les comptes généraux dans le formulaire d'ajout.
-            // Nous ne considérons que les comptes actifs (commençant par 41), et un nombre de comptes inférieure à 100, auquel cas nous aurions besoin d'implémenter la pagination du à la limite de requête.
-            // Pour plus d'informations à ce sujet:
-            // https://developer.sage.com/api/100/fr/saas/ressources/.
-            // https://developer.sage.com/api/100/fr/saas/concepts/odatapaginate/
-            Dictionary<string, string> options = new Dictionary<string, string>();
-            var count = "true";
-            var select = "id,type,numero";
-            var filter = "startswith(numero,'41') and sommeil eq false";
-            options.Add("$count", count);
-            options.Add("$select", select);
-            options.Add("$filter", filter);
-
             ViewBag.Action = "add";
 
             // Gestion du token.
             string accessToken = HttpContext.GetTokenAsync("access_token").Result;
             var repository = APIRepository.Create(accessToken);
-            var accounts = repository.Get(HttpContext.Session.GetString("companyId"), "comptes", options).GetJSONResult();
+
+            var companyId = ApplicationSettings.CompanyId;
+            if (string.IsNullOrEmpty(accessToken) || string.IsNullOrEmpty(companyId))
+            {
+                HttpContext.Response.Redirect("/");
+                return View();
+            }
+
+            // [API06] Récupération des comptes généraux dans le formulaire d'ajout.
+            var accounts = GetActiveAccountsStartingWithNumber(repository, companyId, "41");
             ViewBag.Accounts = accounts["value"];
 
-            Customer model = new Customer();
-            model.adresse = new Customer.Adresse();
-            model.telecom = new Customer.Telecom();
-
-            if (!string.IsNullOrEmpty(customer.numero))
+            Customer model = new Customer
             {
-                // Lie les données adresse et telecom au client.
-                customer.adresse = address;
-                customer.telecom = telecom;
+                Adresse = address,
+                Telecom = telecom
+            };
 
-                // Récupération des propriétés du type Customer de sorte à ce qu'elles soient vides par défaut au lieu de null.
-                foreach (PropertyInfo prop in typeof(Customer).GetProperties())
+            bool customerIsNull = Customer.IsNull(customer);
+            bool customerIsEmpty = Customer.IsEmpty(customer);
+
+            if (customerIsNull)
+            {
+                return View(model);
+            }
+
+            // Lie les données adresse et telecom au client.
+            customer.Adresse = address;
+            customer.Telecom = telecom;
+
+            // Les valeurs du formulaire ne seront pas réinitialisés même s'il y a une erreur.
+            model = customer;
+
+            // Le formulaire a été envoyé.
+            if (customerIsEmpty)
+            {
+                ViewBag.ErrorMessage = "Le numéro, l'intitulé ou le type ne peuvent être des champs vides.";
+                return View(model);
+            }
+
+            customer.Numero = customer.Numero.ToUpper();
+
+            // Il ne peut exister deux clients avec le même compte tiers (Numero).
+            Dictionary<string, string> optionsDuplicate = new Dictionary<string, string>();
+            var numeroFilter = "numero eq '{numero}'";
+            numeroFilter = numeroFilter.Replace("{numero}", customer.Numero);
+            optionsDuplicate.Add("$filter", numeroFilter);
+            var messageDuplicate = repository.Get(companyId, _resourceName, optionsDuplicate);
+
+            if (Tools.IsSuccess(messageDuplicate))
+            {
+                var duplicate = messageDuplicate.GetJSONResult()["value"];
+
+                if (duplicate.HasValues)
                 {
-                    if (prop.GetValue(model) == null && prop.PropertyType.Equals("System.String"))
-                    {
-                        prop.SetValue(model, string.Empty);
-                    }
-                }
-
-                // Liaison du compte principal au client à ajouter.
-                var accountId = "/comptes('{accountId}')";
-                accountId = accountId.Replace("{accountId}", customer.comptePrincipal);
-                customer.comptePrincipal = string.Concat(repository._BASE_URL, HttpContext.Session.GetString("companyId"), accountId);
-
-                // Conversion de Customer en données exploitables par la méthode POST.
-                var data = JsonConvert.SerializeObject(customer);
-
-                if (!string.IsNullOrEmpty(customer.intitule) || !string.IsNullOrEmpty(customer.numero) || !string.IsNullOrEmpty(customer.type))
-                {
-                    // Envoi des données.
-                    var result = repository.Post(HttpContext.Session.GetString("companyId"), _resourceName, data);
-
-                    // Gestion d'erreurs.
-                    if (!result.IsSuccessStatusCode)
-                    {
-                        model = customer;
-                        var reason = result.ReasonPhrase;
-                        var explanation = result.Content.ReadAsStringAsync().Result;
-                        var message = JsonConvert.DeserializeObject<JObject>(explanation);
-                        var error = string.Concat(message["error"]["code"], " (", reason, ")", " - ", message["error"]["message"].ToString());
-                        HttpContext.Response.HttpContext.Session.SetString("error", error);
-                    }
-                    else
-                    {
-                        // Redirection.
-                        var detailsPage = "/Customers";
-                        HttpContext.Response.Redirect(detailsPage);
-                    }
+                    ViewBag.ErrorMessage = "Ce compte tiers est déjà enregistré. Il ne peut exister de doublons.";
+                    return View(model);
                 }
             }
+
+            // [API07] Ajout des données du client - Envoi des données.
+            var accountId = "/comptes('{accountId}')";
+            accountId = accountId.Replace("{accountId}", customer.ComptePrincipal);
+
+
+            // Liaison du compte principal au client à ajouter.
+            customer.ComptePrincipal = string.Concat(repository._BASE_URL, companyId, accountId);
+
+            // Conversion de Customer en données exploitables par la méthode POST.
+            var data = JsonConvert.SerializeObject(customer, new JsonSerializerSettings
+            {
+                ContractResolver = new CamelCasePropertyNamesContractResolver()
+            });
+
+            // Envoi des données pour l'ajout.
+            var result = repository.Post(companyId, _resourceName, data);
+
+            // Gestion d'erreurs.
+            if (!result.IsSuccessStatusCode)
+            {
+                var reason = result.ReasonPhrase;
+                var explanation = result.Content.ReadAsStringAsync().Result;
+                var message = JsonConvert.DeserializeObject<JObject>(explanation);
+                var error = string.Concat(message["error"]["code"], " (", reason, ")", " - ", message["error"]["message"].ToString());
+                ViewBag.ErrorMessage = error;
+            }
+            else
+            {
+                // Redirection.
+                return RedirectToRoute(new
+                {
+                    controller = "Customers",
+                    action = "Index",
+                    searchTerm = customer.Intitule
+                });
+            }
+
             return View(model);
         }
 
@@ -137,159 +209,204 @@ namespace app.Controllers
         /// </summary>
         /// <param name="id"> Id du client dont on souhaite consulter les informations. </param>
         /// <returns> La vue du cient. </returns>
-        [Route("Customers/show/{id}")]
+        [Route("Customers/show/{id}"), ResponseCache(Duration = 0, Location = ResponseCacheLocation.None, NoStore = true)]
         public IActionResult Get(string id)
         {
             // Construction de la requête OData afin d'obtenir une requête précise.
             Dictionary<string, string> options = new Dictionary<string, string>();
-            var count = "true";
-            var filter = "id eq ('" + id + "')";
-            options.Add("$count", count);
+            var filter = "id eq ('{customerId}')";
+            filter = filter.Replace("{customerId}", id);
             options.Add("$filter", filter);
 
             // Gestion du token.
             string accessToken = HttpContext.GetTokenAsync("access_token").Result;
             var repository = APIRepository.Create(accessToken);
 
-            // Récupération des données et liaison avec le modèle.
-            var details = repository.Get(HttpContext.Session.GetString("companyId"), _resourceName, options).GetJSONResult();
-            Customer model = MapToCustomer(details);
+            var companyId = ApplicationSettings.CompanyId;
+            if (string.IsNullOrEmpty(accessToken) || string.IsNullOrEmpty(companyId))
+            {
+                HttpContext.Response.Redirect("/");
+                return View();
+            }
+
+            // [API05] Récupération des données pour la consultation d'une fiche client.
+            var details = repository.Get(companyId, _resourceName, options).GetJSONResult();
+            Customer model = ConvertToCustomer(companyId, details);
+
             return View(model);
         }
 
         /// <summary>
         /// Mise à jour d'un client.
         /// </summary>
-        /// <param name="pCustomer"> Contient les nouvelles valeurs pour chaque propriété non objet. </param>
-        /// <param name="pAddress"> Contient les nouvelles valeurs pour l'objet adresse.</param>
-        /// <param name="pTelecom"> Contient les nouvelles valeurs pour l'objet telecom.</param>
+        /// <param name="customer"> Contient les nouvelles valeurs pour chaque propriété non objet. </param>
+        /// <param name="address"> Contient les nouvelles valeurs pour l'objet adresse.</param>
+        /// <param name="telecom"> Contient les nouvelles valeurs pour l'objet telecom.</param>
         /// <returns> The view of a customer. </returns>
-        [Route("Customers/edit/{id}")]
-        public IActionResult Edit(Customer customer, Customer.Adresse address, Customer.Telecom telecom)
+        [Route("Customers/edit/{id}"), ResponseCache(Duration = 0, Location = ResponseCacheLocation.None, NoStore = true)]
+        public IActionResult Edit(Customer customer, Address address, Telecom telecom)
         {
-            // Récupération et affichages des comptes dans la liste déroulante du formulaire d'édition de client.
-            Dictionary<string, string> accountOptions = new Dictionary<string, string>();
-            var count = "true";
-            var select = "id,type,numero";
-            var filterAccount = "startswith(numero,'41') and sommeil eq false";
-            accountOptions.Add("$count", count);
-            accountOptions.Add("$select", select);
-            accountOptions.Add("$filter", filterAccount);
-
-            ViewBag.Action = "edit";
-
+            // Gestion du token.
             string accessToken = HttpContext.GetTokenAsync("access_token").Result;
-
-            //On a aussi accès au refresh_token
-            //string refreshToken = await HttpContext.GetTokenAsync("refresh_token");
-            //}
             var repository = APIRepository.Create(accessToken);
-            var accounts = repository.Get(HttpContext.Session.GetString("companyId"), "comptes", accountOptions).GetJSONResult();
-            ViewBag.Accounts = accounts["value"];
 
-            customer.adresse = address;
-            customer.telecom = telecom;
+            var companyId = ApplicationSettings.CompanyId;
+            if (string.IsNullOrEmpty(accessToken) || string.IsNullOrEmpty(companyId))
+            {
+                HttpContext.Response.Redirect("/");
+                return View();
+            }
+
+            customer.Adresse = address;
+            customer.Telecom = telecom;
+
+            // [API08] Récupération des comptes généraux dans le formulaire d'édition.
+            var accounts = GetActiveAccountsStartingWithNumber(repository, companyId, "41");
+            ViewBag.Accounts = accounts["value"];
+            ViewBag.Action = "edit";
 
             // Construction de la requête OData afin d'éditer le client correspondant.
             Dictionary<string, string> options = new Dictionary<string, string>();
             var filter = "id eq ('{customerId}')";
-            filter = filter.Replace("{customerId}", customer.id);
-            options.Add("$count", count);
+            filter = filter.Replace("{customerId}", customer.Id);
             options.Add("$filter", filter);
 
-            // Le formulaire d'édition affichera les anciennes valeurs par défaut.
-            var details = repository.Get(HttpContext.Session.GetString("companyId"), _resourceName, options).GetJSONResult();
-            Customer model = MapToCustomer(details);
+            // [API09] Affichage des anciennes valeurs par défaut dans le formulaire d'édition.
+            var details = repository.Get(companyId, _resourceName, options).GetJSONResult();
+            Customer model = ConvertToCustomer(companyId, details);
+
+            bool customerIsNull = Customer.IsNull(customer);
+            bool customerIsEmpty = Customer.IsEmpty(customer);
+
+            if (customerIsNull)
+            {
+                return View(model);
+            }
 
             // Mise à jour avec les nouvelles valeurs.
-            if (!string.IsNullOrEmpty(customer.intitule) || !string.IsNullOrEmpty(customer.numero) || !string.IsNullOrEmpty(customer.type))
+            model = customer;
+
+            // Le formulaire a été envoyé.
+            if (customerIsEmpty)
             {
-                // Nouvelles valeurs.
-                model = customer;
-
-                // Envoie d'une adresse pour lier le compte au client.
-                var accountId = "/comptes('{accountId}')";
-                accountId = accountId.Replace("{accountId}", customer.comptePrincipal);
-                customer.comptePrincipal = string.Concat(repository._BASE_URL, HttpContext.Session.GetString("companyId"), accountId);
-
-                // Conversion en données exploitables.
-                var data = JsonConvert.SerializeObject(customer);
-                var resourceId = _resourceName + "('{customerId}')";
-                resourceId = resourceId.Replace("{customerId}", model.id);
-                var result = repository.Patch(HttpContext.Session.GetString("companyId"), resourceId, data);
-
-                // Si la mise à jour échoue, on affiche une erreur.
-                if (!result.IsSuccessStatusCode)
-                {
-                    model = customer;
-                    var reason = result.ReasonPhrase;
-                    var explanation = result.Content.ReadAsStringAsync().Result;
-                    var message = JsonConvert.DeserializeObject<JObject>(explanation);
-                    var error = string.Concat(message["error"]["code"], " (", reason, ")", " - ", message["error"]["message"].ToString());
-                    HttpContext.Response.HttpContext.Session.SetString("error", error);
-                }
-                else
-                {
-                    // Redirection.
-                    var detailsPage = "/Customers/show/{customerId}";
-                    detailsPage = detailsPage.Replace("{customerId}", model.id);
-                    HttpContext.Response.Redirect(detailsPage);
-                }
+                ViewBag.ErrorMessage = "Le numéro, l'intitulé ou le type ne peuvent être des champs vides.";
+                return View(model);
             }
+
+            // [API10] Edition des données du client - Envoi des données.
+            var accountId = "/comptes('{accountId}')";
+            accountId = accountId.Replace("{accountId}", customer.ComptePrincipal);
+            customer.Numero = customer.Numero.ToUpper();
+
+            // Liaison odata.bind pour lier le compte au client.
+            customer.ComptePrincipal = string.Concat(repository._BASE_URL, companyId, accountId);
+
+            // Conversion en données exploitables.
+            var data = JsonConvert.SerializeObject(customer, new JsonSerializerSettings
+            {
+                ContractResolver = new CamelCasePropertyNamesContractResolver()
+            });
+
+            var resourceId = string.Concat(_resourceName, "('{customerId}')");
+            resourceId = resourceId.Replace("{customerId}", model.Id);
+            var result = repository.Patch(companyId, resourceId, data);
+
+            // Si la mise à jour échoue, on affiche une erreur.
+            if (!result.IsSuccessStatusCode)
+            {
+                var reason = result.ReasonPhrase;
+                var explanation = result.Content.ReadAsStringAsync().Result;
+                var message = JsonConvert.DeserializeObject<JObject>(explanation);
+                var error = string.Concat(message["error"]["code"], " (", reason, ")", " - ", message["error"]["message"].ToString());
+                ViewBag.ErrorMessage = error;
+            }
+            else
+            {
+                // Redirection.
+                return RedirectToRoute(new
+                {
+                    controller = "Customers",
+                    action = "Get",
+                    id = model.Id
+                });
+            }
+
             return View(model);
+        }
+
+        /// <summary>
+        /// 
+        /// </summary>
+        /// <param name="repository"></param>
+        /// <param name="companyId"></param>
+        /// <returns></returns>
+        private JObject GetActiveAccountsStartingWithNumber(APIRepository repository, string companyId, string numero)
+        {
+            // Remplissage de la liste déroulante avec les comptes généraux dans le formulaire d'ajout.
+            // Nous ne considérons que les comptes actifs (commençant par 41), et un nombre de comptes inférieure à 100, auquel cas nous aurions besoin d'implémenter la pagination du à la limite de requête.
+            // Pour plus d'informations à ce sujet:
+            // https://developer.sage.com/api/100/fr/saas/ressources/.
+            // https://developer.sage.com/api/100/fr/saas/concepts/odatapaginate/
+
+            Dictionary<string, string> accountOptions = new Dictionary<string, string>();
+            var select = "id,type,numero";
+            var filterAccount = "startswith(numero,'{numero}') and sommeil eq false";
+            filterAccount = filterAccount.Replace("{numero}", numero);
+            accountOptions.Add("$select", select);
+            accountOptions.Add("$filter", filterAccount);
+            var accounts = repository.Get(companyId, "comptes", accountOptions).GetJSONResult();
+
+            return accounts;
         }
 
         /// <summary>
         /// Associe les champs d'un JOBject au modèle Customer.
         /// </summary>
-        /// <param name="details"></param>
-        private Customer MapToCustomer(JObject details)
+        /// <param name="companyId"> L'id de la société. </param>
+        /// <param name="details"> Le JObject a convertir en Customer. </param>
+        [ResponseCache(Duration = 0, Location = ResponseCacheLocation.None, NoStore = true)]
+        private Customer ConvertToCustomer(string companyId, JObject details)
         {
             Customer model = new Customer();
             var client = details["value"][0];
-            model.id = client["id"].ToString();
-            model.ape = client["ape"].ToString();
-            model.classement = client["classement"].ToString();
-            model.commentaire = client["commentaire"].ToString();
-            model.contact = client["contact"].ToString();
+            model.Id = client["id"].ToString();
+            model.Ape = client["ape"].ToString();
+            model.Classement = client["classement"].ToString();
+            model.Commentaire = client["commentaire"].ToString();
+            model.Contact = client["contact"].ToString();
 
-            model.identifiant = client["identifiant"].ToString();
-            model.intitule = client["intitule"].ToString();
-            model.numero = client["numero"].ToString();
-            model.qualite = client["qualite"].ToString();
-            model.siret = client["siret"].ToString();
-            model.type = client["type"].ToString();
+            model.Identifiant = client["identifiant"].ToString();
+            model.Intitule = client["intitule"].ToString();
+            model.Numero = client["numero"].ToString();
+            model.Qualite = client["qualite"].ToString();
+            model.Siret = client["siret"].ToString();
+            model.Type = client["type"].ToString();
 
             string accessToken = HttpContext.GetTokenAsync("access_token").Result;
-
-            //On a aussi accès au refresh_token
-            //string refreshToken = await HttpContext.GetTokenAsync("refresh_token");
-            //}
             var repository = APIRepository.Create(accessToken);
-
 
             // Compte principal lié au client.
             var endpoint = "clients('{clientId}')/comptePrincipal";
-            endpoint = endpoint.Replace("{clientId}", model.id);
-            var account = repository.Get(HttpContext.Session.GetString("companyId"), endpoint, new Dictionary<string, string>()).GetJSONResult();
-            model.comptePrincipal = account["numero"].ToString();
+            endpoint = endpoint.Replace("{clientId}", model.Id);
+            var account = repository.Get(companyId, endpoint, new Dictionary<string, string>()).GetJSONResult();
+            model.ComptePrincipal = account["numero"].ToString();
 
-            model.adresse = new Customer.Adresse();
-            model.telecom = new Customer.Telecom();
+            model.Adresse = new Address();
+            model.Telecom = new Telecom();
 
             // Adresse.
-            model.adresse.adresse = client["adresse"]["adresse"].ToString();
-            model.adresse.pays = client["adresse"]["pays"].ToString();
-            model.adresse.complement = client["adresse"]["complement"].ToString();
-            model.adresse.codePostal = client["adresse"]["codePostal"].ToString();
-            model.adresse.codeRegion = client["adresse"]["codeRegion"].ToString();
-            model.adresse.ville = client["adresse"]["ville"].ToString();
+            model.Adresse.adresse = client["adresse"]["adresse"].ToString();
+            model.Adresse.Pays = client["adresse"]["pays"].ToString();
+            model.Adresse.Complement = client["adresse"]["complement"].ToString();
+            model.Adresse.CodePostal = client["adresse"]["codePostal"].ToString();
+            model.Adresse.CodeRegion = client["adresse"]["codeRegion"].ToString();
+            model.Adresse.Ville = client["adresse"]["ville"].ToString();
 
             // Telecom.
-            model.telecom.site = client["telecom"]["site"].ToString();
-            model.telecom.eMail = client["telecom"]["eMail"].ToString();
-            model.telecom.telecopie = client["telecom"]["telecopie"].ToString();
-            model.telecom.telephone = client["telecom"]["telephone"].ToString();
+            model.Telecom.Site = client["telecom"]["site"].ToString();
+            model.Telecom.EMail = client["telecom"]["eMail"].ToString();
+            model.Telecom.Telecopie = client["telecom"]["telecopie"].ToString();
+            model.Telecom.Telephone = client["telecom"]["telephone"].ToString();
 
             return model;
         }

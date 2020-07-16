@@ -5,9 +5,10 @@
     ViewData["Title"] = "Clients";
 }
 
-@Html.Partial("Guide")
+<partial name="Guide" />
+
 <div class="main">
-    @Html.Partial("Menu")
+    <partial name="Menu" />
     <form id="request" class="request" action="/Customers" method="post">
         <div class="titlepage">
             <h2>Consultation de clients</h2>
@@ -21,6 +22,6 @@
                 <button class="button">Exécuter la requête</button>
             </div>
         </div>
-        @Html.Partial("Resp")
+        <partial name="Resp" />
     </form>
 </div>

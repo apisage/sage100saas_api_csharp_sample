@@ -1,17 +1,8 @@
 ﻿using System;
 using System.Collections.Generic;
-using System.Diagnostics;
 using System.Linq;
-using System.IO;
-using System.Threading.Tasks;
 using Microsoft.AspNetCore.Mvc;
-using System.Net.Http.Headers;
 using Microsoft.AspNetCore.Http;
-using System.Net.Http;
-using Newtonsoft.Json.Linq;
-using Newtonsoft.Json;
-using System.Net;
-using app.Models;
 using Microsoft.AspNetCore.Authentication;
 using app.Repositories;
 using app.Settings;
@@ -36,11 +27,16 @@ namespace app.Controllers
             if (User.Identity.IsAuthenticated)
             {
                 var access_token = HttpContext.GetTokenAsync("access_token").Result;
-                if (!String.IsNullOrEmpty(access_token) && String.IsNullOrEmpty(HttpContext.Session.GetString("companyId")))
+                var name = ApplicationSettings.CompanyName;
+
+                if (!string.IsNullOrEmpty(access_token) && !string.IsNullOrEmpty(name))
                 {
                     var repository = APIRepository.Create(access_token);
-                    Dictionary<string, string> companyOptions = new Dictionary<string, string>();
-                    companyOptions.Add("$filter", String.Format("name eq '{0}'", ApplicationSettings.company_name));
+                    Dictionary<string, string> companyOptions = new Dictionary<string, string>
+                    {
+                        { "$filter", string.Format("name eq '{0}'", name) }
+                    };
+
                     var message = repository.Get("", "companies", companyOptions);
                     if (!Tools.IsSuccess(message))
                     {
@@ -52,13 +48,13 @@ namespace app.Controllers
 
                     if (companies.Count == 0 || companies["value"].Count() == 0)
                     {
-                        ViewBag.ErrorMessage = $"La société {ApplicationSettings.company_name} n'existe pas ou vous ne disposez pas des autorisations pour y accéder";
+                        ViewBag.ErrorMessage = $"La société {name} n'existe pas ou vous ne disposez pas des autorisations pour y accéder";
                         return;
                     }
 
                     var firstCompanyId = companies["value"][0]["id"].ToString();
-                    HttpContext.Session.SetString("companyId", firstCompanyId);
-                    HttpContext.Session.SetString("companyName", ApplicationSettings.company_name);
+                    ApplicationSettings.CompanyName = name;
+                    ApplicationSettings.CompanyId = firstCompanyId;
                 }
             }
         }

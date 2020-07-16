@@ -5,10 +5,10 @@
     ViewData["Title"] = "Ajout";
 }
 
-@Html.Partial("Guide")
+<partial name="Guide" />
 
 <div class="main">
-    @Html.Partial("Menu")
+    <partial name="Menu" />
     <form id="request" class="request" action="Add" method="post">
         <input class="field__input" type="hidden" id="resource" name="resource" value="clients" />
         <input class="field__input" type="hidden" id="type" name="type" value="Client" />
@@ -17,7 +17,7 @@
             <div class="titlepage">
                 <h2>Nouveau client</h2>
             </div>
-            @Html.Partial("AddEdit")
+            <partial name="AddEdit" />
         </div>
     </form>
 </div>

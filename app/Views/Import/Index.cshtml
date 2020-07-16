@@ -1,53 +1,52 @@
-﻿@using Microsoft.AspNetCore.Http
+﻿@model app.Models.Import
 @inject Microsoft.AspNetCore.Http.IHttpContextAccessor HttpContextAccessor
 @{
-    ViewData["Title"] = "Imports";
+    ViewData["Title"] = "Import";
 }
 
 
-@Html.Partial("Guide")
+<partial name="Guide" />
 
 <div class="main">
-
-    @Html.Partial("Menu")
+    <partial name="Menu" />
     <form id="request" class="request" action="Import" method="post" enctype="multipart/form-data">
-      <input id="file" name="file" style="display:none" type="file" accept=".txt">
-      <div class="titlepage">
-          <h2>Import d'écritures de ventes</h2>
-      </div>
-      <div class="actionbutton">
-          <a class="button secondary" href="https://developer.sage.com/api/100/fr/saas/guides/samples/exemplesmappage/" target="targetsample">Détail fichier</a>
-          <label for="file" class="button secondary">Charger fichier</label>
-          <button class="button">Importer</button>
-      </div>
-      @{
-          if (ViewBag.ErrorsPiece == null)
-          {
-          <div>
-              <ol>
-              <li class="step">Cliquez sur le bouton <b>Détail fichier</b> pour accéder à la page d'aide et récupérer en local le jeu d'essai à importer.</li>
-              <li class="step">Une fois le jeu d'essai récupéré sur votre poste local, cliquez sur <b>Charger fichier</b> pour le charger dans l'application.</li>
-              <li class="step">Cliquez enfin sur le bouton <b>Importer</b> pour importer les pièces comptables du jeu d'essai dans la comptabilité.</li>
-              </ol>
-          </div>
+        <input id="file" name="file" style="display:none" type="file" accept=".txt">
+        <div class="titlepage">
+            <h2>Import d'écritures de ventes</h2>
+        </div>
+        <div class="actionbutton">
+            <a class="button secondary" href="https://developer.sage.com/api/100/fr/saas/guides/samples/exemplesmappage/" target="targetsample">Détail fichier</a>
+            <label for="file" class="button secondary">Charger fichier</label>
+            <button class="button">Importer</button>
+        </div>
+        @{
+            if (ViewBag.ErrorsPiece == null)
+            {
+                <div>
+                    <ol>
+                        <li class="step">Cliquez sur le bouton <b>Détail fichier</b> pour accéder à la page d'aide et récupérer en local le jeu d'essai à importer.</li>
+                        <li class="step">Une fois le jeu d'essai récupéré sur votre poste local, cliquez sur <b>Charger fichier</b> pour le charger dans l'application.</li>
+                        <li class="step">Cliquez enfin sur le bouton <b>Importer</b> pour importer les pièces comptables du jeu d'essai dans la comptabilité.</li>
+                    </ol>
+                </div>
 
-          }
-          else
-          {
-              <p>
-              <b>Bravo !</b> Les pièces comptables sans erreur ont été importées dans la comptabilité et vous pouvez les consulter depuis la saisie des écritures de la comptabilité.
-              </p>
-              <p>
-              Les pièces suivantes ont été rejetées car non conformes :
-              </p>
-              var errors = ViewBag.ErrorsPiece;
-              <ul class="field__error">
-                  @foreach (var error in errors)
-                  {
-                      <li class="step"> @error  </li>
-                  }
-              </ul>
-          }
-      }
-  </form>
+            }
+            else
+            {
+                <p>
+                    <b>Bravo !</b> Les pièces comptables sans erreur ont été importées dans la comptabilité et vous pouvez les consulter depuis la saisie des écritures de la comptabilité.
+                </p>
+                <p>
+                    Les pièces suivantes ont été rejetées car non conformes :
+                </p>
+                var errors = ViewBag.ErrorsPiece;
+                <ul class="field__error">
+                    @foreach (var error in errors)
+                    {
+                        <li class="step"> @error  </li>
+                    }
+                </ul>
+            }
+        }
+    </form>
 </div>

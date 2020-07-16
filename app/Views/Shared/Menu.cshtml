@@ -1,26 +1,25 @@
-﻿@using Microsoft.AspNetCore.Http
-@{
+﻿@{
 
-    ViewData["Title"] = "Index";
+    ViewData["Title"] = "Menu";
 }
 <div class="menu">
     <a class="button addspinner" href="/">Accueil</a>
 
-    @if (!Startup.getPathOfConfigFile().Equals(""))
+    @if (!Startup.GetPathOfConfigFile().Equals(string.Empty))
     {
         if (!User.Identity.IsAuthenticated)
         {
-            <a class="button addspinner" asp-controller="Authentification" asp-action="Login">Connexion</a>
+            <a class="button addspinner" href="Authentification/Login">Connexion</a>
         }
         else
         {
-            <a class="button addspinner" asp-controller="Authentification" asp-action="Logout">Déconnexion</a>
-            if (!String.IsNullOrEmpty(Context.Session.GetString("companyId")))
+            <a class="button addspinner" href="Authentification/Logout">Déconnexion</a>
+            if (!string.IsNullOrEmpty(app.Settings.ApplicationSettings.CompanyName))
             {
                 <a class="button addspinner" href="/Request">Requêtes</a>
                 <a class="button addspinner" href="/Customers">Clients</a>
                 <a class="button addspinner" href="/Import">Import</a>
-                <div class="companyname">@Context.Session.GetString("companyName")</div>
+                <div class="companyname">@app.Settings.ApplicationSettings.CompanyName</div>
             }
         }
     }

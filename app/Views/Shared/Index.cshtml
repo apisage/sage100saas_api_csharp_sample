@@ -4,9 +4,9 @@
     ViewData["Title"] = "Index";
 }
 
+<partial name="Guide" />
 
-@Html.Partial("Guide")
 <div class="main">
-    @Html.Partial("Menu")
-    @Html.Partial("Home")
+    <partial name="Menu" />
+    <partial name="Home" />
 </div>

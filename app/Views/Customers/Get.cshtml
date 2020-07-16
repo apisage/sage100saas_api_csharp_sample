@@ -5,70 +5,70 @@
     ViewData["Title"] = "Details";
 }
 
-@Html.Partial("Guide")
+<partial name="Guide" />
 
 <div class="main">
-    @Html.Partial("Menu")
+    <partial name="Menu" />
     <div class="request">
         <div class="titlepage">
-            <h2>Détail du client @Model.numero</h2>
+            <h2>Détail du client @Model.Numero</h2>
         </div>
         <div class="actionbutton">
-            <a class="button" href="/Customers/edit/@Model.id">Modifier</a>
+            <a class="button" href="/Customers/edit/@Model.Id">Modifier</a>
         </div>
         <table class="detailsClient" id="detailsClient" name="detailsClient" width="100%">
             <tr> <td class="fieldBloc" colspan="4"> Détails </td> </tr>
             <tr>
                 <td class="fieldTitle">  Compte tiers  </td>
-                <td class="fieldValue">  @Model.numero </td>
+                <td class="fieldValue">  @Model.Numero </td>
                 <td class="fieldTitle">  Compte principal  </td>
-                <td class="fieldValue">  @Model.comptePrincipal </td>
+                <td class="fieldValue">  @Model.ComptePrincipal </td>
             </tr>
             <tr>
                 <td class="fieldTitle">  Intitule  </td>
-                <td class="fieldValue">  @Model.intitule  </td>
+                <td class="fieldValue">  @Model.Intitule  </td>
                 <td class="fieldTitle">  Abrégé  </td>
-                <td class="fieldValue">  @Model.classement  </td>
+                <td class="fieldValue">  @Model.Classement  </td>
             </tr>
             <tr>
                 <td class="fieldTitle">  Interlocuteur  </td>
-                <td class="fieldValue">  @Model.contact  </td>
+                <td class="fieldValue">  @Model.Contact  </td>
                 <td class="fieldTitle">  Qualité  </td>
-                <td class="fieldValue">  @Model.qualite  </td>
+                <td class="fieldValue">  @Model.Qualite  </td>
             </tr>
             <tr>
                 <td class="fieldTitle">  Commentaire  </td>
-                <td class="fieldValue">  @Model.commentaire  </td>
+                <td class="fieldValue">  @Model.Commentaire  </td>
             </tr>
             <tr> <td class="fieldBloc" colspan="4"> Coordonnées </td> </tr>
             <tr>
                 <td class="fieldTitle">  Téléphone  </td>
-                <td class="fieldValue">  @Model.telecom.telephone  </td>
+                <td class="fieldValue">  @Model.Telecom.Telephone  </td>
                 <td class="fieldTitle">  Télécopie  </td>
-                <td class="fieldValue">  @Model.telecom.telecopie  </td>
+                <td class="fieldValue">  @Model.Telecom.Telecopie  </td>
             </tr>
             <tr>
                 <td class="fieldTitle">  Email  </td>
-                <td class="fieldValue">  @Model.telecom.eMail   </td>
+                <td class="fieldValue">  @Model.Telecom.EMail   </td>
                 <td class="fieldTitle">  Site internet  </td>
-                <td class="fieldValue">   @Model.telecom.site  </td>
+                <td class="fieldValue">   @Model.Telecom.Site  </td>
             </tr>
             <tr>
                 <td class="fieldTitle">Adresse</td>
                 <td class="fieldValue">
-                    @Model.adresse.adresse<br />@Model.adresse.complement<br /> @Model.adresse.codePostal @Model.adresse.ville<br />  @Model.adresse.pays
+                    @Model.Adresse.adresse<br />@Model.Adresse.Complement<br /> @Model.Adresse.CodePostal @Model.Adresse.Ville<br />  @Model.Adresse.Pays
                 </td>
             </tr>
             <tr> <td class="fieldBloc" colspan="4"> Immatriculation  </td> </tr>
             <tr>
                 <td class="fieldTitle"> Siret  </td>
-                <td class="fieldValue">  @Model.siret  </td>
+                <td class="fieldValue">  @Model.Siret  </td>
                 <td class="fieldTitle">  Code NAF  </td>
-                <td class="fieldValue"> @Model.ape  </td>
+                <td class="fieldValue"> @Model.Ape  </td>
             </tr>
             <tr>
                 <td class="fieldTitle">  Identifiant TVA  </td>
-                <td class="fieldValue"> @Model.identifiant  </td>
+                <td class="fieldValue"> @Model.Identifiant  </td>
             </tr>
         </table>
     </div>

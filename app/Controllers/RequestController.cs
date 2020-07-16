@@ -4,6 +4,7 @@ using Microsoft.AspNetCore.Http;
 using app.Models;
 using app.Repositories;
 using Microsoft.AspNetCore.Authentication;
+using System.Net;
 
 namespace app.Controllers
 {
@@ -16,22 +17,31 @@ namespace app.Controllers
         /// <returns></returns>
         public IActionResult Index(Request model)
         {
-            //var model = new Request();
             // Chargement des sociétés dans la liste déroulante.
-            Dictionary<string, string> companyOptions = new Dictionary<string, string>();
-            companyOptions.Add("$select", "id,name");
+            Dictionary<string, string> companyOptions = new Dictionary<string, string>
+            {
+                { "$select", "id,name" }
+            };
 
             // Gestion du token.
             string accessToken = HttpContext.GetTokenAsync("access_token").Result;
             var repository = APIRepository.Create(accessToken);
 
-            // On récupère la liste des sociétés.
-            var message = repository.Get("", "companies", companyOptions);
+            if (string.IsNullOrEmpty(accessToken))
+            {
+                Error error = new Error(string.Empty, (int)HttpStatusCode.Unauthorized);
+                return View("Error", error);
+            }
+
+            // [API01] Récupération de la liste des sociétés.
+            var message = repository.Get(string.Empty, "companies", companyOptions);
+
             if (!Tools.IsSuccess(message))
             {
-                model.RespStatusCode = string.Concat((int)message.StatusCode, " - ", message.StatusCode.ToString());
-                model.RespBody = Tools.GetStringResult(message);
-                return View(model);
+                var details = "Désolé ! Les sociétés n'ont pas pu être récupérées !";
+                Error error = new Error(details, (int)message.StatusCode);
+
+                return View("Error", error);
             }
 
             var companies = Tools.GetJSONResult(message);
@@ -45,32 +55,33 @@ namespace app.Controllers
 
             // Récupération de la première société de sorte à ne pas avoir un champ vide.
             var firstCompanyId = companies["value"][0]["id"].ToString();
-            // Autocompletion des ressources d'une société.
+
+            // [API02] Récupération des ressources d'une société.
             message = repository.Get(firstCompanyId, null, null);
 
             if (!Tools.IsSuccess(message))
             {
-                model.RespStatusCode = string.Concat((int)message.StatusCode, " - ", message.StatusCode.ToString());
-                model.RespBody = Tools.GetStringResult(message);
-                return View(model);
+                var details = "Désolé ! Les ressources des sociétés disponibles n'ont pas pu être récupérées.";
+                Error error = new Error(details, (int)message.StatusCode);
+                return View("Error");
             }
 
             var resources = Tools.GetJSONResult(message);
-
             List<string> endpoints = new List<string>();
-
 
             foreach (var resource in resources["value"])
             {
                 endpoints.Add(resource["url"].ToString());
             }
+
             ViewBag.Endpoints = endpoints;
 
-            // Envoi des données du formulaire.
+            // [API03] Envoi des données du formulaire.
             if (model.Company != null)
             {
                 DoRequest(repository, model);
             }
+
             return View(model);
         }
 
@@ -82,40 +93,23 @@ namespace app.Controllers
         private void DoRequest(APIRepository repository, Request model)
         {
             Dictionary<string, string> options = new Dictionary<string, string>();
-
-            if (!string.IsNullOrEmpty(model.Expand))
+            Dictionary<string, string> parameters = new Dictionary<string, string>
             {
-                options.Add("$expand", model.Expand);
-            }
+                { "$expand" , model.Expand },
+                { "$filter" , model.Filter},
+                { "$select" , model.Select },
+                { "$orderby" , model.Orderby },
+                { "$top" , model.Top},
+                { "$skip" , model.Skip},
+                { "$count" , model.Count}
+            };
 
-            if (!string.IsNullOrEmpty(model.Filter))
+            foreach (var parameter in parameters)
             {
-                options.Add("$filter", model.Filter);
-            }
-
-            if (!string.IsNullOrEmpty(model.Select))
-            {
-                options.Add("$select", model.Select);
-            }
-
-            if (!string.IsNullOrEmpty(model.Orderby))
-            {
-                options.Add("$orderby", model.Orderby);
-            }
-
-            if (!string.IsNullOrEmpty(model.Top))
-            {
-                options.Add("$top", model.Top);
-            }
-
-            if (!string.IsNullOrEmpty(model.Skip))
-            {
-                options.Add("$skip", model.Skip);
-            }
-
-            if (!string.IsNullOrEmpty(model.Count))
-            {
-                options.Add("$count", model.Count);
+                if (!string.IsNullOrEmpty(parameter.Value) && !string.IsNullOrWhiteSpace(parameter.Value))
+                {
+                    options.Add(parameter.Key, parameter.Value);
+                }
             }
 
             var message = repository.Get(model.Company, model.Resource, options);

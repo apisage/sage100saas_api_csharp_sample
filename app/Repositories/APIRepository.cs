@@ -8,8 +8,7 @@ namespace app.Repositories
 {
     public class APIRepository
     {
-        public String _BASE_URL = "https://api-dev-sage100saas.sagedatacloud.com/";
-        //public String _BASE_URL = "http://localhost:62005/api/V1/";
+        public string _BASE_URL = "https://api-demo-sage100saas.sagedatacloud.com/";
         private readonly static Lazy<APIRepository> _instance = new Lazy<APIRepository>(() => new APIRepository());
 
         private string Token
@@ -18,17 +17,16 @@ namespace app.Repositories
             set;
         }
 
-
         /// <summary>
         /// Récupération des données dans une collection (ex: comptes, clients...).
         /// </summary>
         /// <param name="company"> L'id de société dans laquelle la récupération aura lieu. </param>
         /// <param name="resource"> La ressource souhaitée. </param>
         /// <param name="options"> Les paramètres OData (count, filter...) étant utilisés pour obtenir une réponse précise. </param>
-        /// <returns> Un tuple contenant les données au format JObject ainsi que le code réponse de la requête. </returns>
+        /// <returns> Un message http contenant les données au format JObject ainsi que le code réponse de la requête. </returns>
         public HttpResponseMessage Get(string company, string resource = null, Dictionary<string, string> options = null)
         {
-            var uri = string.Concat(_BASE_URL, company);//, "/", resource);
+            var uri = string.Concat(_BASE_URL, company);
 
             if (!string.IsNullOrEmpty(resource))
             {
@@ -72,7 +70,7 @@ namespace app.Repositories
         public HttpResponseMessage Patch(string datasetId, string resourceName, string data)
         {
             var client = CreateHttpClient();
-            var uri = String.Concat(_BASE_URL, datasetId, "/", resourceName);
+            var uri = string.Concat(_BASE_URL, datasetId, "/", resourceName);
             var request = client.PatchAsync(uri, new StringContent(data, Encoding.UTF8, "application/json"));
             return request.Result;
         }
@@ -89,26 +87,6 @@ namespace app.Repositories
             return client;
         }
 
-        /// <summary>
-        /// Lecture du fichier de configuration.
-        /// </summary>
-        /// <param name="context"></param>
-        /*public void TokenfileRead(HttpContext context)
-        {
-            if (System.IO.File.Exists(Path.Combine(Directory.GetCurrentDirectory(), "access_token.json")))
-            {
-                using (StreamReader file = System.IO.File.OpenText(Path.Combine(Directory.GetCurrentDirectory(), "access_token.json")))
-                using (JsonTextReader reader = new JsonTextReader(file))
-                {
-                    JObject jsonObj = (JObject)JToken.ReadFrom(reader);
-                    context.Request.HttpContext.Session.SetString("access_token", (string)jsonObj["access_token"]);
-                    context.Request.HttpContext.Session.SetString("expires_at", (string)jsonObj["expires_at"]);
-                    context.Request.HttpContext.Session.SetString("refresh_token", (string)jsonObj["refresh_token"]);
-                    context.Request.HttpContext.Session.SetString("refresh_token_expires_at", (string)jsonObj["refresh_token_expires_at"]);
-                }
-            }
-        }*/
-
         private APIRepository()
         {
         }
@@ -120,8 +98,10 @@ namespace app.Repositories
         /// <returns></returns>
         public static APIRepository Create(string token)
         {
-            var instance = new APIRepository();
-            instance.Token = token;
+            var instance = new APIRepository
+            {
+                Token = token
+            };
             return instance;
         }
     }
