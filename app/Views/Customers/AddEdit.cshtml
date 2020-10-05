@@ -1,52 +1,35 @@
 ﻿@model app.Models.Customer
-@inject Microsoft.AspNetCore.Http.IHttpContextAccessor HttpContextAccessor
 
+@*****************************[FORMULAIRE CREATION / MODIFICATION CLIENT]**********************************************************@
 <div class="actionbutton">
     <button class="button">Enregistrer</button>
 </div>
 
-@{
-    var Error = ViewBag.ErrorMessage;
-    if (Error != null)
-    {
-        <p class="field__error">
-            @Error
-        </p>
-        HttpContextAccessor.HttpContext.Session.Clear();
-    }
-
-    var readOnly = (ViewBag.Action == "edit") ? "readonly" : "";
-}
-
-<table id="detailsClient" name="detailsClient" width="100%">
+<table width="100%">
     <tr> <td class="fieldBloc" colspan="4"> Détails </td> </tr>
     <tr>
-        <td class="fieldTitle">  Compte tiers  </td>
-        <td class="fieldValueInput"> <input class="field__input" name="numero" value="@Model.Numero" @readOnly> </td>
+        <td class="fieldTitle @Html.Raw(ViewBag.Action!="add" ?"": "mandatory")">  Compte de tiers  </td>
+        <td class="fieldValueInput">
+            <input class="field__input uppercase" id="numero" name="numero" value="@Model.Numero"
+                   onkeyup="CheckClientNumber(this,'@ViewBag.Action','keyup');"
+                   onchange="CheckClientNumber(this,'@ViewBag.Action','change');"
+                   readonly="@(ViewBag.Action!="add")" required oninvalid="cancelSpinner();">
+        </td>
         <td class="fieldTitle">  Compte principal  </td>
         <td class="fieldValueInput">
             <div class="select-style">
                 <select class="field__input" id="comptePrincipal" name="comptePrincipal">
                     @foreach (var account in ViewBag.Accounts)
                     {
-                        var id = account["id"];
-                        var numero = (string)account["numero"];
-                        if (Model.ComptePrincipal != null && Model.ComptePrincipal.Equals(numero))
-                        {
-                            <option selected="selected" value="@id"> @numero </option>
-                        }
-                        else
-                        {
-                            <option value="@id"> @numero  </option>
-                        }
+                        <option selected="@(Model.ComptePrincipal==(string)account.numero)" value="@account.id]">@account.numero</option>
                     }
                 </select>
             </div>
         </td>
     </tr>
     <tr>
-        <td class="fieldTitle">  Intitule  </td>
-        <td class="fieldValueInput"> <input class="field__input" id="intitule" name="intitule" value="@Model.Intitule"> </td>
+        <td class="fieldTitle mandatory">  Intitulé </td>
+        <td class="fieldValueInput"> <input class="field__input" id="intitule" name="intitule" value="@Model.Intitule" required oninvalid="cancelSpinner();"> </td>
         <td class="fieldTitle">  Abrégé  </td>
         <td class="fieldValueInput"> <input class="field__input" id="classement" name="classement" value="@Model.Classement"> </td>
     </tr>
@@ -65,17 +48,17 @@
         <td class="fieldTitle">  Téléphone  </td>
         <td class="fieldValueInput"> <input class="field__input" id="telephone" name="telephone" value="@Model.Telecom.Telephone"> </td>
         <td class="fieldTitle">  Télécopie  </td>
-        <td class="fieldValueInput"> <input class="field__input" id="telephone" name="telecopie" value="@Model.Telecom.Telecopie"> </td>
+        <td class="fieldValueInput"> <input class="field__input" id="telecopie" name="telecopie" value="@Model.Telecom.Telecopie"> </td>
     </tr>
     <tr>
         <td class="fieldTitle">  Email  </td>
-        <td class="fieldValueInput"> <input class="field__input" id="eMail" name="eMail" value="@Model.Telecom.EMail"> </td>
+        <td class="fieldValueInput"> <input type="email" class="field__input" id="eMail" name="eMail" value="@Model.Telecom.EMail" oninvalid="cancelSpinner();"> </td>
         <td class="fieldTitle">  Site internet  </td>
         <td class="fieldValueInput"> <input class="field__input" id="site" name="site" value="@Model.Telecom.Site"> </td>
     </tr>
     <tr>
         <td class="fieldTitle">  Adresse  </td>
-        <td class="fieldValueInput"> <input class="field__input" id="site" name="adresse" value="@Model.Adresse.adresse"> </td>
+        <td class="fieldValueInput"> <input class="field__input" id="adresse" name="adresse" value="@Model.Adresse.adresse"> </td>
         <td class="fieldTitle">  Code postal  </td>
         <td class="fieldValueInput"> <input class="field__input" id="codePostal" name="codePostal" value="@Model.Adresse.CodePostal"> </td>
     </tr>
@@ -89,17 +72,56 @@
         <td class="fieldTitle">  Code Région  </td>
         <td class="fieldValueInput"> <input class="field__input" id="codeRegion" name="codeRegion" value="@Model.Adresse.CodeRegion"> </td>
         <td class="fieldTitle">  Pays  </td>
-        <td class="fieldValueInput"> <input class="field__input" id="pays" name="pays" value="@Model.Adresse.Pays"> </td>
+        <td class="fieldValueInput">
+            <input class="field__input" id="pays" name="pays" value="@Model.Adresse.Pays" list="listePays">
+            <datalist id="listePays">
+                @foreach (var pays in ViewBag.Pays)
+                {
+                    <option value="@pays.intitule"></option>
+                }
+            </datalist>
+        </td>
     </tr>
     <tr> <td class="fieldBloc" colspan="4">Immatriculation  </td> </tr>
     <tr>
-        <td class="fieldTitle"> Siret  </td>
+        <td class="fieldTitle"> Numéro Siret  </td>
         <td class="fieldValueInput"> <input class="field__input" id="siret" name="siret" value="@Model.Siret"> </td>
         <td class="fieldTitle">  Code NAF  </td>
         <td class="fieldValueInput"> <input class="field__input" id="ape" name="ape" value="@Model.Ape"> </td>
     </tr>
     <tr>
-        <td class="fieldTitle">  Identifiant TVA  </td>
+        <td class="fieldTitle">  Numéro de TVA  </td>
         <td class="fieldValueInput"> <input class="field__input" id="identifiant" name="identifiant" value="@Model.Identifiant"> </td>
     </tr>
 </table>
+
+@*****************************[SCRIPTS JAVASCRIPT EXECUTES PAR LE NAVIGATEUR]**********************************************************@
+<script type="text/javascript">
+    affectContextError("@Html.Raw(ViewBag.ErrorMessage)");
+
+    //En création on vérifie si le compte tiers n'existe pas déjà dans la base de tiers
+    //On gère un Timer pour éviter appel à chaque frappe de touche tant que l'utilisateur n'arrête pas de saisir
+    var tmpNumero = "";
+    var CheckClientNumber = function (compteTiers, action) {
+        if (action == "add") {
+            affectContextError("");
+            if (compteTiers.value) compteTiers.value = compteTiers.value.toUpperCase();
+            numero = compteTiers.value;
+            if (!numero || numero == tmpNumero) return;
+            tmpNumero = numero;
+            if (typeof CheckClientNumberTime != "undefined") clearTimeout(CheckClientNumberTime);
+            CheckClientNumberTime = setTimeout(function () { CheckClientNumberAction(numero, compteTiers) }, 300);
+        }
+    }
+    var CheckClientNumberAction = function (numero, compteTiers) {
+        var ajax = new XMLHttpRequest();
+        var uri = "/Customers/AjaxCheckClientNumber/" + numero;
+        ajax.open('GET', uri, true);
+        ajax.onload = function () {
+            if (ajax.status >= 200 && ajax.status < 400) {
+                affectContextError(ajax.responseText,compteTiers);
+            }
+        };
+        ajax.send();
+    }
+</script>

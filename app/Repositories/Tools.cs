@@ -1,18 +1,30 @@
-﻿using Newtonsoft.Json;
+﻿using app.Models;
+using app.Settings;
+using Newtonsoft.Json;
 using Newtonsoft.Json.Linq;
 using System;
+using System.Collections.Generic;
 using System.Net;
 using System.Net.Http;
+using System.Xml;
+using System.Text.RegularExpressions;
 
 namespace app.Repositories
 {
     public static class Tools
     {
+
+        public static object forceAuthentication = new
+        {
+            controller = "Authentification",
+            action = "Logout"
+        };
+
         /// <summary>
         /// Détermine si la réponse à une requête est valide ou non.
         /// </summary>
         /// <param name="message"> La réponse à une requête. </param>
-        /// <returns></returns>
+        /// <returns> Vrai si la réponse est valide. </returns>
         public static bool IsSuccess(this HttpResponseMessage message)
         {
             if (message.IsSuccessStatusCode)
@@ -36,8 +48,8 @@ namespace app.Repositories
         /// <summary>
         /// Vérifie si la réponse d'une requête correspond à un format JSON.
         /// </summary>
-        /// <param name="response"> La reponse d'une requête devant être vérifiée. </param>
-        /// <returns></returns>
+        /// <param name="response"> La réponse d'une requête devant être vérifiée. </param>
+        /// <returns> Retourne vrai si response est au format JSON. </returns>
         public static bool IsJson(this string response)
         {
             try
@@ -68,21 +80,7 @@ namespace app.Repositories
 
             return result;
         }
-
-        /// <summary>
-        /// Transforme à partir d'une réponse à une requête, des données JSON pour les afficher au format string.
-        /// </summary>
-        /// <param name="message"> La réponse à une requête. </param>
-        /// <returns> Retourne une chaine de caractère représentant un JSON. </returns>
-        public static string GetStringResult(this HttpResponseMessage message)
-        {
-            var data = GetJSONResult(message);
-            string responseContent = data.ToString();
-            dynamic parsedJson = JsonConvert.DeserializeObject(responseContent);
-
-            return JsonConvert.SerializeObject(parsedJson, Formatting.Indented);
-        }
-
+  
         /// <summary>
         /// Arrondit un double à 4 décimales.
         /// </summary>
@@ -111,5 +109,166 @@ namespace app.Repositories
 
             return new DateTime((int)year, (int)month, (int)day, 0, 0, 0, DateTimeKind.Utc);
         }
+
+        /// <summary>
+        /// Renvoie les sociétés disponibles dans lequelles sont possibles des requêtes.
+        /// </summary>
+        /// <param name="repository"> Le repository. </param>
+        /// <returns>Un JObject contenant les sociétés.</returns>
+        public static HttpResponseMessage GetCompanies(APIRepository repository)
+        {
+            if (ApplicationSettings.CompaniesCache == null)
+            {
+                Dictionary<string, string> options = new Dictionary<string, string>();
+                options.Add("$select", "id,name");
+                var result = repository.Get(string.Empty, "companies", options);
+                ApplicationSettings.CompaniesCache = result;
+            }
+
+            return ApplicationSettings.CompaniesCache;
+        }
+
+        /// <summary>
+        /// Associe les champs d'un JToken au modèle Customer.
+        /// </summary>
+        /// <param name="client"> Le JToken à convertir en Customer. </param>
+        public static Customer ConvertToCustomer(JToken client)
+        {
+            var adresse = client["adresse"];
+            var telecom = client["telecom"];
+
+            // Compte principal lié au client. La requête OData doit avoir "$expand=comptePrincipal".
+            Customer model = new Customer
+            {
+                Id = client["id"].ToString(),
+                Ape = client["ape"].ToString(),
+                Classement = client["classement"].ToString(),
+                Commentaire = client["commentaire"].ToString(),
+                Contact = client["contact"].ToString(),
+                Identifiant = client["identifiant"].ToString(),
+                Intitule = client["intitule"].ToString(),
+                Numero = client["numero"].ToString(),
+                Qualite = client["qualite"].ToString(),
+                Siret = client["siret"].ToString(),
+                Type = client["type"].ToString(),
+                ComptePrincipal = client["comptePrincipal"]["numero"].ToString(),
+                Adresse = new Address(
+                    adresse["adresse"].ToString(),
+                    adresse["pays"].ToString(),
+                    adresse["complement"].ToString(),
+                    adresse["codePostal"].ToString(),
+                    adresse["codeRegion"].ToString(),
+                    adresse["ville"].ToString()
+                    ),
+                Telecom = new Telecom(
+                    telecom["site"].ToString(),
+                    telecom["eMail"].ToString(),
+                    telecom["telecopie"].ToString(),
+                    telecom["telephone"].ToString()
+                    )
+            };
+
+            return model;
+        }
+
+        public static XmlDocument GetMetadata(APIRepository repository)
+        {
+            if (ApplicationSettings.MetadataCache == null)
+            {
+                XmlDocument doc = new XmlDocument();
+                doc.Load(ApplicationSettings.UrlApi+repository.CompanyId+"/$metadata");
+                ApplicationSettings.MetadataCache = doc;
+            }
+            return ApplicationSettings.MetadataCache;
+        }
+
+        public static Dictionary<string, List<string>> GetMetadataResources(XmlDocument document)
+        {
+            if (ApplicationSettings.MetadataCacheResources == null)
+            {
+                XmlNamespaceManager manager = new XmlNamespaceManager(document.NameTable);
+                manager.AddNamespace("edmx", document.DocumentElement.NamespaceURI);
+                manager.AddNamespace("model", "http://docs.oasis-open.org/odata/ns/edm");
+
+                Dictionary<string, List<string>> resources = new Dictionary<string, List<string>>();
+                var xpath = "/edmx:Edmx/edmx:DataServices/model:Schema/model:EntityContainer/*";
+                XmlNodeList entityContainer = document.SelectNodes(xpath, manager);
+
+                foreach (XmlNode entity in entityContainer)
+                {
+                    var resourceName = entity.Attributes["Name"].Value;
+
+                    if (entity.HasChildNodes)
+                    {
+                        // Récupération des relations.
+                        var relations = entity.SelectNodes("model:NavigationPropertyBinding", manager);                    
+                        resources[resourceName] = new List<string>();
+
+                        foreach (XmlNode node in relations)
+                        {
+                            var path = node.Attributes["Path"].Value;
+                            if (!path.StartsWith("100S.Model."))
+                               resources[resourceName].Add(path);
+                        }
+
+                        // Récupération des sous-ressources.
+                        var nonExpandableChild = entity.LastChild;
+                        if (nonExpandableChild.Name.Equals("Annotation"))
+                        {
+                            var xpathSubresources = "model:Record/model:PropertyValue/model:Collection/model:NavigationPropertyPath/text()";
+                            var tagCollection = nonExpandableChild.SelectNodes(xpathSubresources, manager);
+
+                            foreach (XmlNode node in tagCollection)
+                            {
+                                if (!resources[resourceName].Exists(x => x.Equals(node.InnerText)))
+                                    resources[resourceName].Add(node.InnerText);
+                            }
+                        }
+                    }
+                }
+                ApplicationSettings.MetadataCacheResources = resources;
+            }
+            return ApplicationSettings.MetadataCacheResources;
+        }
+
+        /// <summary>
+        /// Retourne une URL correspondant à un élément de type single-valued relation.
+        /// </summary>
+        /// <param name="repository"> Le repository. </param>
+        /// <param name="resource"> Le nom de la ressource dont on veut la liaison. </param>
+        /// <param name="toBind"> L'id</param>
+        /// <returns> Une chaîne. </returns>
+        public static string OdataBind(APIRepository repository, string resource, string toBind)
+        {
+           return ApplicationSettings.UrlApi+repository.CompanyId+"/"+resource+"('"+toBind+"')";
+        }
+
+        /// <summary>
+        /// Définit le message d'erreur issue du résultat d'une requête issu d'un json erreur Api ou d'une page html de type 404 par exemple.
+        /// </summary>
+        /// <param name="result"> Le résultat issue d'une requête. </param>
+        //Context + result.StatusCode/ <param name="Context">Optionnellement l'url de la route de l'Api appelée</param>
+        public static string FormateErrorApi(HttpResponseMessage result,string Context=null)
+        {       
+            Context = (Context == null) ? "":"<div class='errorApi'>"+Context + "</div><br>";
+
+            var res = result.Content.ReadAsStringAsync().Result;
+            if (res == "")
+                return Context + (int)result.StatusCode + " - " + result.StatusCode;
+
+            if (IsJson(res))
+            {
+                var message = JsonConvert.DeserializeObject<JObject>(res);
+                return (Context + message["error"]["code"] + " (" + result.ReasonPhrase + ") - " + message["error"]["message"].ToString()).Replace("\r\n", "");
+            }
+            else
+            {
+                var response = Regex.Match(res, "<title>(.*)</title>", RegexOptions.Singleline).Groups[1].Value;
+                if (response == "")
+                    response = res;
+                return Context + response;
+            }
+        }
+
     }
 }

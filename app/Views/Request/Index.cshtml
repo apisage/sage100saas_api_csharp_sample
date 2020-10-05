@@ -1,198 +1,405 @@
-﻿@using Microsoft.AspNetCore.Http
-@model app.Models.Request
-@inject Microsoft.AspNetCore.Http.IHttpContextAccessor HttpContextAccessor
-@{
-    ViewData["Title"] = "Request";
+﻿@model app.Models.Request
+
+@*****************************[STYLES SPECIFIQUES A CETTE PAGE]**********************************************************@
+<style>
+    .titleAction {
+        font-weight: bold;
+        text-align: center
+    }
+
+    .valueAction {
+        width: 100%
+    }
+
+    .valueOData {
+        width: 100%;
+        display: block;
+    }
+
+    .titleOData {
+        font-weight: bold;
+    }
+
+    .titleODataRight {
+        text-align: right;
+    }
+
+    .urlAction {
+        background-color: rgba(0, 92, 154, 0.16);
+        padding: 2px 5px 2px 5px;
+        margin: 1px;
+        height: 45px;
+        font-family: monospace;
+        font-size: 14px;
+        word-break: break-all;
+        width: 100%;
+        resize: none;
+    }
+
+    #requestBuilding,
+    #queryOptions {
+        -webkit-border-horizontal-spacing: 0px;
+        width: calc(100% + 2px);
+    }
+
+    .resourceId {
+        font-family: monospace;
+        font-size: 15px;
+    }
+
+    div.responseInfo {
+        background-color: rgba(0, 92, 154, 0.16);
+        margin: 10px 2px -1px 2px;
+        resize: none;
+        width: 100%;
+        height: 32px;
+    }
+
+    span.responseInfo {
+        float: right;
+    }
+
+        span.responseInfo::after {
+            background-color: rgb(0,115,194);
+            padding: 0px 5px 0px 5px;
+            margin: -1px 0px 2px 10px;
+            color: #fff;
+            border-radius: 19px;
+            float: right;
+            cursor: pointer;
+        }
+
+    span.responseInfoMin::after {
+        content: "\21F1";
+        transform: rotate(90deg);
+    }
+
+    span.responseInfoMax::after {
+        content: "\21F2";
+    }
+
+
+    div.responseBody {
+        margin: 0px 2px 2px 2px;
+        font-family: monospace;
+        font-size: 14px;
+        white-space: pre;
+        overflow: auto;
+        width: 100%;
+        resize: none;
+    }
+
+    div.responseBodyMax {
+        height: calc(100vh - 195px);
+    }
+
+    div.responseBodyMin {
+        height: calc(100vh - 515px);
+    }
+
+    pre.responseBody {
+        outline: 0px;
+        padding: 0px;
+        margin: 0px;
+        word-break: break-all;
+        white-space: pre-wrap;
+    }
+
+    .requestBuilding {
+        width: 100%;
+    }
+
+    pre {
+        outline: 1px solid #ccc;
+        padding: 5px;
+        margin: 5px;
+    }
+
+    .string {
+        color: #d14;
+    }
+
+    .number {
+        color: #669900;
+    }
+
+    .boolean {
+        color: #606aa1;
+    }
+
+    .null {
+        color: magenta;
+    }
+
+    .key {
+        color: #222;
+    }
+</style>
+
+
+@*****************************[CONTENU DE LA PAGE]**********************************************************@
+@{ 
+    string defaultTop = "50";
 }
+
+
 
 <partial name="Guide" />
 
 <div class="main">
     <partial name="Menu" />
-    <form id="request" class="request" action="Request" method="post">
-        <div class="titlepage">
-            <h2>Test des requêtes de l'API</h2>
-        </div>
-        <div class="actionbutton">
-            <a class="button secondary" href="https://developer.sage.com/api/100/fr/saas/ressources/" target="targetapi">Ressources</a>
-            <a class="button secondary" href="https://developer.sage.com/api/100/fr/saas/guides/samples/sampleodataapi/" target="targetsample">Exemples</a>
-            <a class="button secondary" href="https://developer.sage.com/api/100/fr/saas/concepts/" target="targetconcepts">Concepts</a>
-            <button class="button">Exécuter la requête</button>
-        </div>
-
-
-        <table name="api_building_array" width="100%">
-            <caption class="request_url" align="bottom" id="caption">
-                https://api-demo-sage100saas.sagedatacloud.com/<strong id='caption_societeID'>&lt;SociétéID&gt;</strong>/<strong id='caption_resource'>&lt;Resource&gt;</strong>
-            </caption>
-            <tr>
-                <td class="field">
-                    <label class="field__label" for="http_verb">Méthode de la requête</label>
-                </td>
-                <td class="field">
-                    <label class="field__label" for="company">Société</label>
-                </td>
-                <td class="field">
-                    <label class="field__label" for="resource">Point de terminaison de la requête</label>
-                </td>
-            </tr>
-            <tr>
-                <td class="field">
-                    <div class="field__body">
-                        <select class="field__input" id="http_verb" name="http_verb" onchange="displayQueryOptions()">
-                            <option value="get">GET</option>
-                        </select>
-                    </div>
-                </td>
-                <td class="field">
-                    <div class="field__body">
-                        <select class="field__input" onchange="updateCaption(this.options[this.selectedIndex].value, 'caption_societeID')" id="company" name="company" list="company">
-                            @{
-                                string name;
-                                string id;
-                                var companies = ViewBag.Companies;
-                                if (companies != null)
-                                {
-                                    var reqCompany = Model.Company;
-                                    foreach (var company in companies)
-                                    {
-                                        name = company["name"];
-                                        id = company["id"];
-                                        if (id.Equals(reqCompany))
-                                        {
-                                            <option selected="selected" label="@name"> @id  </option>
-                                        }
-                                        else
-                                        {
-                                            <option label="@name"> @id </option>
-                                        }
-
-                                    }
-                                }
-                            }
-                        </select>
-                    </div>
-                </td>
-                <td class="field">
-                    <div class="field__body">
-                        <select class="field__input" id="resources" onchange="updateCaption(this.value, 'caption_resource')" name="resource">
-                            @{
-                                var endpoints = ViewBag.Endpoints;
-                                if (endpoints != null)
-                                {
-                                    var resource = Model.Resource;
-                                    <option> </option>
-                                    foreach (var endpoint in endpoints)
-                                    {
-                                        if (endpoint.Equals(resource))
-                                        {
-                                            <option selected="selected"> @endpoint </option>
-                                        }
-                                        else
-                                        {
-                                            <option> @endpoint </option>
-                                        }
-                                    }
-                                }
-                            }
-                        </select>
-                    </div>
-                </td>
-            </tr>
-        </table>
-
-        <table id="query_options" width="100%">
-            <tr class="field">
-                <td>
-                    <label class="field__label" for="expand"> $expand </label>
-                </td>
-                <td class="field__body">
-                    <input class="field__input" value="@Model.Expand" id="expand" name="expand" />
-
-                </td>
-            </tr>
-            <tr class="field">
-                <td>
-                    <label class="field__label" for="filter"> $filter </label>
-                </td>
-                <td class="field__body">
-                    <input class="field__input" value="@Model.Filter" id="filter" name="filter" />
-
-                </td>
-            </tr>
-            <tr class="field">
-                <td>
-                    <label class="field__label" for="filter"> $select </label>
-                </td>
-                <td class="field__body">
-                    <input class="field__input" value="@Model.Select" id="select" name="select" />
-                </td>
-            </tr>
-            <tr class="field">
-                <td>
-                    <label class="field__label" for="orderby"> $orderby </label>
-                </td>
-                <td class="field__body">
-                    <input class="field__input" value="@Model.Orderby" id="orderby" name="orderby" />
-                </td>
-            </tr>
-            <tr class="field">
-                <td>
-                    <label class="field__label" for="top"> $top </label>
-                </td>
-                <td class="field__body">
-                    <input class="field__input" value="@Model.Top" id="top" name="top" />
-                </td>
-            </tr>
-            <tr class="field">
-                <td>
-                    <label class="field__label" for="skip"> $skip </label>
-                </td>
-                <td class="field__body">
-                    <input class="field__input" value="@Model.Skip" id="skip" name="skip" />
-                </td>
-            </tr>
-            <tr class="field">
-                <td>
-                    <label class="field__label" for="count"> $count </label>
-                </td>
-                <td class="field__body">
-                    <input class="field__input" value="@Model.Count" id="count" name="count" />
-                </td>
-            </tr>
-        </table>
-        <script>
-
-            // Update caption under the api_building_array.
-            function updateCaption(value, domID) {
-                var element = document.getElementById(domID);
-                if (value == 0) {
-
-                    element.innerText = "Resource";
-                }
-                else {
-                    element.innerText = value;
-                }
+    <form id="request" class="form" action="Request" method="post" spellcheck="false">
+        <input id="changeResource" name="changeResource" type="hidden" />
+        <div id="requestBloc">
+            <div class="titlepage">
+                <h2>Test des requêtes de l'API</h2>
+            </div>
+            <div class="actionbutton">
+                <a class="button secondary" href="https://developer.sage.com/api/100/fr/saas/ressources/" target="targetapi">Ressources</a>
+                <a class="button secondary" href="https://developer.sage.com/api/100/fr/saas/guides/samples/sampleodataapi/" target="targetsample">Exemples</a>
+                <a class="button secondary" href="https://developer.sage.com/api/100/fr/saas/concepts/" target="targetconcepts">Concepts</a>
+                <a class="button addspinner" onclick="clearResponse();">Exécuter la requête</a>
+            </div>
+            @***************************[SAISIE DES PARAMETRES DE L'APPEL API]***************@
+            @{
+                var currentCompany = (string.IsNullOrEmpty(Model.Company) ? app.Settings.ApplicationSettings.CompanyId : Model.Company);
+                var currentResource = (string.IsNullOrEmpty(Model.Resource) ? "comptes" : Model.Resource);
             }
-        </script>
-    </form>
+            <table id="requestBuilding" width="100%">
+                <tr>
+                    <td class="titleAction" width="5%">Méthode</td>
+                    <td class="titleAction" width="20%">Société</td>
+                    <td class="titleAction" width="20%">Ressource</td>
+                    <td class="titleAction">Id de ressource</td>
+                    <td class="titleAction" width="20%">Relation</td>
+                </tr>
 
-    @if (Model.RespBody != null)
-    {
-        <div id="response" class="request">
-            <div class="field">
-                <label class="field__label">Code réponse</label>
-                <div class="field__body">
-                    <input class="field__input" readonly value="@Model.RespStatusCode" />
-                </div>
-            </div>
+                <tr>
+                    <td>
+                        <input class="field__input valueAction" style="text-align:center" readonly value="GET" />
+                    </td>
 
-            <div class="field">
-                <label class="field__label">Réponse de la requête</label>
-                <div class="field__body">
-                    <textarea class="field__input response__body" readonly>@Model.RespBody</textarea>
-                </div>
-            </div>
+                    <td>
+                        <select class="field__input valueAction" onchange="changeParam(this)" id="company" name="company" list="company">
+                            @foreach (var companies in ViewBag.Companies)
+                            {
+                                <option selected="@(companies.id == currentCompany)" value="@companies.id">@companies.name</option>
+                            }
+                        </select>
+                    </td>
+
+                    <td>
+                        <select class="field__input valueAction" id="resources" onchange="changeParam(this)" name="resource">
+                            @foreach (var endpoint in ViewBag.Resources.Keys)
+                            {
+                                <option selected="@(endpoint==currentResource)"> @endpoint </option>
+                            }
+                        </select>
+                    </td>
+
+                    <td class="field">
+                        <input type="search" class="field__input valueAction resourceId" onchange="changeParam(this)" id="resourceId" name="resourceId" value="@Model.ResourceId" autocomplete="off" />
+                    </td>
+
+                    <td class="field">
+
+                        <select class="field__input valueAction" style="min-width: 100%" id="subresource" onchange="changeParam(this)" name="subresource">
+                            <option selected="(@Html.Raw(Model.Subresource=="")"></option>
+                            @foreach (var element in ViewBag.Resources[currentResource])
+                            {
+                                <option selected="@(element==Model.Subresource)"> @element </option>
+                            }
+                        </select>
+                    </td>
+                </tr>
+            </table>
+
+            @***************************[AFFICHAGE DE L'URL APPELEE]***************@
+            <div id="urlAction" class="urlAction field__input"></div>
+
+            @***************************[SAISIE PARAMETRES ODATA]***************@
+            <table id="queryOptions" width="100%">
+                <tr>
+                    <td class="titleOData">$expand</td>
+                    <td colspan="5">
+                        <input type="search" class="field__input valueOData" value="@Model.Expand" id="expand" name="expand" onchange="updateUrl()" />
+                    </td>
+                </tr>
+                <tr>
+                    <td class="titleOData">$filter</td>
+                    <td colspan="5">
+                        <input type="search" class="field__input valueOData" value="@Model.Filter" id="filter" name="filter" onchange="updateUrl()" />
+                    </td>
+                </tr>
+                <tr>
+                    <td class="titleOData">$select</td>
+                    <td colspan="5">
+                        <input type="search" class="field__input valueOData" value="@Model.Select" id="select" name="select" onchange="updateUrl()" />
+                    </td>
+                </tr>
+                <tr>
+                    <td class="titleOData">$orderby</td>
+                    <td colspan="5">
+                        <input type="search" class="field__input valueOData" value="@Model.Orderby" id="orderby" name="orderby" onchange="updateUrl()" />
+                    </td>
+                </tr>
+                <tr>
+                    <td class="titleOData">$top</td>
+                    <td>
+                        <input type="search" class="field__input valueOData" value="@Html.Raw((Model.Top==null) ? defaultTop:Model.Top)" id="top" name="top" onchange="updateUrl()" />
+                    </td>
+                    <td class="titleOData titleODataRight">$skip</td>
+                    <td>
+                        <input type="search" class="field__input valueOData" value="@Model.Skip" id="skip" name="skip" onchange="updateUrl()" />
+                    </td>
+                    <td class="titleOData titleODataRight">$count</td>
+                    <td>
+                        <input type="search" class="field__input valueOData" value="@Model.Count" id="count" name="count" onchange="updateUrl()" />
+                    </td>
+                </tr>
+
+            </table>
         </div>
-    }
+
+        @***************************[REPONSE DE LA REQUETE]***************@
+        @{
+            string responseInfo = "", responseCount = "";
+
+            if (Model.RespStatusCode != 0)
+            {
+                responseInfo = " : " + Model.RespStatusCode + " - " + Model.RespStatusMessage;
+                if (Model.RespStatusCode == 200) responseCount = Model.RespCount.ToString();
+            }
+        }
+
+        <div id="responseInfo" class="field__input responseInfo">
+            <b>Réponse</b> @responseInfo
+            <span id="responseInfoSpan" class="responseInfo responseInfoMin" style="float:right" onclick="responseBodyChangeSize();">
+                @Html.Raw((responseCount != "") ? "<b>nombre d'enregistrements retournés</b> : " + responseCount : "")
+            </span>
+        </div>
+        <div id="responseBody" class="field__input field__body responseBody responseBodyMin">
+            <pre id="responseBodyPre" class="responseBody">@Model.RespBody</pre>
+        </div>
+
+    </form>
 </div>
+
+@*****************************[SCRIPTS JAVASCRIPT EXECUTES PAR LE NAVIGATEUR]**********************************************************@
+<script type="text/javascript">
+
+    //Met à jour en temps réel l'url appel Api en fonction des paramètres saisis
+    var updateUrl = function () {
+
+        var odataParam = ["$expand", "$filter", "$select", "$orderby", "$top", "$skip", "$count"];
+
+        var company = document.getElementById('company');
+        company = company.item(company.selectedIndex).value;
+
+        var resource = document.getElementById('resources');
+        resource = resource.item(resource.selectedIndex).value;
+
+        var resourceId = document.getElementById('resourceId').value;
+        var subresource = document.getElementById('subresource');
+        subresource = (subresource.item(subresource.selectedIndex))?subresource.item(subresource.selectedIndex).value : "";
+
+        var urlAction=
+            "@app.Settings.ApplicationSettings.UrlApi" +
+            company +
+            ((resource) ? "/" + resource : "") +
+            ((resourceId) ? "('" + resourceId + "')" : "") +
+            ((subresource) ? "/" + subresource : "");
+
+        var odataParams = "";
+        for (var i = 0; i<odataParam.length; i++) {
+            if (param = document.getElementById(odataParam[i].substr(1)).value)
+                odataParams += ((!odataParams) ? "?" : "&") + odataParam[i]+"="+param;
+        }
+
+        document.getElementById("urlAction").innerHTML = urlAction + odataParams;
+    }
+
+    //Change le contexte d'accessibilité des champs de saisie de la requête en fonctiob des paramètres déjà saisis.
+    var changeParam = function (action) {
+        var resourceId = document.getElementById("resourceId");
+        var subresource = document.getElementById("subresource");
+        switch (action.id) {
+            //Attention pas de break volonatairement à chaque fn de case car ils doivent s'empiler.
+            case "company":
+            case "resources":
+                resourceId.value = "";
+                subresource.selectedIndex = 0;
+                subresource.disabled = true;
+            case "resourceId":
+                var odataParamOnlyCollection = ["$filter", "$orderby", "$top", "$skip", "$count"];
+                for (var i = 0; i < odataParamOnlyCollection.length; i++) {
+                    paramOdata = document.getElementById(odataParamOnlyCollection[i].substr(1));
+                    paramOdata.disabled = (resourceId.value);
+                    if (resourceId.value) paramOdata.value = "";
+                }
+                subresource.disabled = (!resourceId.value);
+                if (!resourceId.value) {
+                    subresource.selectedIndex = 0;
+                    document.getElementById("top").value = "@defaultTop";
+                }
+                break;
+            default:
+        }
+        //Si changement resource on reposte la page pour recalculer la liste des sous ressources de la ressource
+        if (action.id == "resources") {
+            document.getElementById('changeResource').value = true;
+            document.getElementById('request').submit();
+        }
+
+
+        updateUrl();
+    }
+    changeParam(document.getElementById("resourceId"));
+
+    //Effacement de la réponse
+    var clearResponse = function () {
+        document.getElementById("responseInfo").innerHTML = "";
+        document.getElementById("responseBody").innerHTML = "";
+        document.getElementById("request").submit();
+    }
+
+    //Coloration syntaxique du json réponse
+    var syntaxHighlight = function (json) {
+        json = json.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+        return json.replace(/("(\\u[a-zA-Z0-9]{4}|\\[^u]|[^\\"])*"(\s*:)?|\b(true|false|null)\b|-?\d+(?:\.\d*)?(?:[eE][+\-]?\d+)?)/g, function (match) {
+            var cls = 'number';
+            if (/^"/.test(match)) {
+                if (/:$/.test(match)) {
+                    cls = 'key';
+                } else {
+                    cls = 'string';
+                }
+            } else if (/true|false/.test(match)) {
+                cls = 'boolean';
+            } else if (/null/.test(match)) {
+                cls = 'null';
+            }
+            return '<span class="' + cls + '">' + match + '</span>';
+        });
+    }
+    document.getElementById("responseBodyPre").innerHTML = syntaxHighlight(document.getElementById("responseBodyPre").innerHTML);
+
+    //Change taille du bloc répons
+    var responseBodyChangeSize = function () {
+        var responseBody = document.getElementById("responseBody");
+        var requestBloc = document.getElementById("requestBloc");
+        var responseInfoSpan = document.getElementById("responseInfoSpan");
+
+        if (responseBody.className.indexOf("responseBodyMin") != -1) {
+            responseBody.className = responseBody.className.replace("responseBodyMin", "responseBodyMax");
+            responseInfoSpan.className = responseInfoSpan.className.replace("responseInfoMin", "responseInfoMax");
+            requestBloc.style.display = "none";
+        }
+        else {
+            responseBody.className = responseBody.className.replace("responseBodyMax", "responseBodyMin");
+            responseInfoSpan.className = responseInfoSpan.className.replace("responseInfoMax", "responseInfoMin");
+            requestBloc.style.display = "block";
+        }
+    }
+
+</script>

@@ -13,6 +13,7 @@ using Newtonsoft.Json.Linq;
 using app.Settings;
 using Microsoft.Extensions.Hosting;
 using Microsoft.IdentityModel.Protocols.OpenIdConnect;
+using app.Models;
 
 namespace app
 {
@@ -26,12 +27,23 @@ namespace app
 
         public IConfiguration Configuration { get; }
 
-        const string AUTHORITY = "id-shadow.sage.com";
-        const string AUDIENCE = "fr100saas/api.pub";
+  
 
+        //Fix impossible de se connecter en http : https://github.com/dotnet/aspnetcore/issues/14996
+        private void CheckSameSite(HttpContext httpContext, CookieOptions options)
+        {
+            if (options.SameSite == SameSiteMode.None && !httpContext.Request.IsHttps)
+            {
+                options.SameSite = SameSiteMode.Unspecified;
+            }
+        }
+
+        // [API14] Authentification - Configuration.
         // This method gets called by the runtime. Use this method to add services to the container.
         public void ConfigureServices(IServiceCollection services)
         {
+            services.AddLocalization();
+            services.AddRazorPages().AddRazorRuntimeCompilation();
             services.AddDistributedMemoryCache();
             services.AddSession(options =>
             {
@@ -45,6 +57,9 @@ namespace app
                 // This lambda determines whether user consent for non-essential cookies is needed for a given request.
                 options.CheckConsentNeeded = context => true;
                 options.MinimumSameSitePolicy = SameSiteMode.None;
+                //Fix impossible de se connecter en http : https://github.com/dotnet/aspnetcore/issues/14996
+                options.OnAppendCookie = cookieContext => CheckSameSite(cookieContext.Context, cookieContext.CookieOptions);
+                options.OnDeleteCookie = cookieContext => CheckSameSite(cookieContext.Context, cookieContext.CookieOptions);
             });
 
             // Add authentication services
@@ -58,7 +73,7 @@ namespace app
             .AddOpenIdConnect("SageId", options =>
             {
                 // Set the authority to your SageId domain
-                options.Authority = $"https://{AUTHORITY}";
+                options.Authority = $"https://{ApplicationSettings.Authority}";
 
                 // Configure the SageId Client ID and Client Secret
                 options.ClientId = ApplicationSettings.ClientId;
@@ -70,29 +85,22 @@ namespace app
                 // Configure the scope
                 options.Scope.Add("openid");
                 options.Scope.Add("offline_access"); //=> Pour obtenir le refresh_token
-                options.Scope.Add("Company.Write.All");
                 options.Scope.Add("Company.Read.All");
-                options.Scope.Add("Parameter.Write.All");
                 options.Scope.Add("Parameter.Read.All");
-                options.Scope.Add("Account.Write.All");
+                options.Scope.Add("Parameter.Write.All");
                 options.Scope.Add("Account.Read.All");
                 options.Scope.Add("Tiers.Write.All");
                 options.Scope.Add("Tiers.Read.All");
-                options.Scope.Add("Tax.Write.All");
                 options.Scope.Add("Tax.Read.All");
-                options.Scope.Add("Journal.Write.All");
                 options.Scope.Add("Journal.Read.All");
-                options.Scope.Add("History.Accounting.Write.All");
                 options.Scope.Add("History.Accounting.Read.All");
+                options.Scope.Add("History.Accounting.Write.All");
 
-                // Set the callback path, so SageId will call back to http://localhost:3000/callback
+
+                // Set the callback path
                 // Also ensure that you have added the URL as an Allowed Callback URL in your SageId dashboard
-                if (!String.IsNullOrEmpty(ApplicationSettings.CallbackUrl))
-                {
-                    var uri = new UriBuilder(ApplicationSettings.CallbackUrl);
-                    options.CallbackPath = new PathString(uri.Path);
-                }
-
+                options.CallbackPath = ApplicationSettings.CallBackPath;
+               
                 // Configure the Claims Issuer to be SageId
                 options.ClaimsIssuer = "SageId";
                 options.SaveTokens = true;
@@ -101,7 +109,7 @@ namespace app
                     // handle the logout redirection
                     OnRedirectToIdentityProviderForSignOut = (context) =>
                     {
-                        var logoutUri = $"https://{AUTHORITY}/v2/logout?client_id={options.ClientId}";
+                        var logoutUri = $"https://{ApplicationSettings.Authority}/v2/logout?client_id={options.ClientId}";
                         var postLogoutUri = context.Properties.RedirectUri;
                         if (!string.IsNullOrEmpty(postLogoutUri))
                         {
@@ -121,7 +129,7 @@ namespace app
                     },
                     OnRedirectToIdentityProvider = context =>
                     {
-                        context.ProtocolMessage.SetParameter("audience", AUDIENCE);
+                        context.ProtocolMessage.SetParameter("audience", ApplicationSettings.Audience);
 
                         return Task.FromResult(0);
                     }
@@ -175,39 +183,45 @@ namespace app
                     name: "error",
                     pattern: "{controller=Home}/{action=Error}"
                 );
+                endpoints.MapControllerRoute(
+                    name: "authentificationLogin",
+                    pattern: "{controller=Authentification}/{action=Login}"
+                );
+                endpoints.MapControllerRoute(
+                    name: "authentificationLogout",
+                    pattern: "{controller=Authentification}/{action=Logout}"
+                );
             });
         }
 
-        //Recherche le fichier client_application.json dans la racine ou dans app/
+        //Recherche la présence du fichier client_application.json 
         public static string GetPathOfConfigFile()
         {
             if (System.IO.File.Exists(Path.Combine(Directory.GetCurrentDirectory(), "client_application.json")))
             {
                 return Path.Combine(Directory.GetCurrentDirectory(), "client_application.json");
             }
-            else if (System.IO.File.Exists(Path.Combine(Directory.GetCurrentDirectory(), "app/client_application.json")))
-            {
-                return Path.Combine(Directory.GetCurrentDirectory(), "app/client_application.json");
-            }
+
             return "";
         }
 
-        private static void InitializeApplicationSettings()
+        public static void InitializeApplicationSettings()
         {
             ApplicationSettings.ClientId = "default";
 
-            var settingsPath = Startup.GetPathOfConfigFile();
-            if (!String.IsNullOrEmpty(settingsPath))
+            var settingsPath = GetPathOfConfigFile();
+            if (!string.IsNullOrEmpty(settingsPath))
             {
                 StreamReader file = File.OpenText(settingsPath);
-                using (JsonTextReader reader = new JsonTextReader(file))
-                {
-                    JObject configObj = (JObject)JToken.ReadFrom(reader);
-                    ApplicationSettings.ClientId = (string)configObj["config"]["client_id"];
-                    ApplicationSettings.ClientSecret = (string)configObj["config"]["client_secret"];
-                    ApplicationSettings.CallbackUrl = (string)configObj["config"]["callback_url"];
-                    ApplicationSettings.CompanyName = (string)configObj["config"]["company_name"];
-                }
+                using JsonTextReader reader = new JsonTextReader(file);
+                JObject configObj = (JObject)JToken.ReadFrom(reader);
+                ApplicationSettings.ClientId = (string)configObj["config"]["client_id"];
+                ApplicationSettings.ClientSecret = (string)configObj["config"]["client_secret"];
+                ApplicationSettings.CompanyName = (string)configObj["config"]["company_name"];
+
+                var alternateUrlApi = (string)configObj["config"]["url_api"];
+                ApplicationSettings.UrlApi = (string.IsNullOrEmpty(alternateUrlApi)) ? ApplicationSettings.DefaultUrlApi : alternateUrlApi;
+                if (!ApplicationSettings.UrlApi.EndsWith("/")) ApplicationSettings.UrlApi += "/";            
             }
         }
     }

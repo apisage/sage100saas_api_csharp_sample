@@ -1,25 +1,21 @@
-﻿@using Microsoft.AspNetCore.Http
-@model app.Models.Customer
-@inject Microsoft.AspNetCore.Http.IHttpContextAccessor HttpContextAccessor
-@{
-    ViewData["Title"] = "Details";
-}
+﻿@model app.Models.Customer
 
 <partial name="Guide" />
 
 <div class="main">
     <partial name="Menu" />
-    <div class="request">
+    <div class="form">
         <div class="titlepage">
             <h2>Détail du client @Model.Numero</h2>
         </div>
         <div class="actionbutton">
-            <a class="button" href="/Customers/edit/@Model.Id">Modifier</a>
+            <a class="button addspinner" href="/Customers/edit/@Model.Id">Modifier</a>
+            <a class="button warning" onclick="dlgBoxSupprimeClient();"> Supprimer </a>
         </div>
-        <table class="detailsClient" id="detailsClient" name="detailsClient" width="100%">
+        <table class="detailsClient" width="100%">
             <tr> <td class="fieldBloc" colspan="4"> Détails </td> </tr>
             <tr>
-                <td class="fieldTitle">  Compte tiers  </td>
+                <td class="fieldTitle">  Compte de tiers  </td>
                 <td class="fieldValue">  @Model.Numero </td>
                 <td class="fieldTitle">  Compte principal  </td>
                 <td class="fieldValue">  @Model.ComptePrincipal </td>
@@ -61,15 +57,68 @@
             </tr>
             <tr> <td class="fieldBloc" colspan="4"> Immatriculation  </td> </tr>
             <tr>
-                <td class="fieldTitle"> Siret  </td>
+                <td class="fieldTitle"> Numéro Siret  </td>
                 <td class="fieldValue">  @Model.Siret  </td>
                 <td class="fieldTitle">  Code NAF  </td>
                 <td class="fieldValue"> @Model.Ape  </td>
             </tr>
             <tr>
-                <td class="fieldTitle">  Identifiant TVA  </td>
+                <td class="fieldTitle">  Numéro de TVA  </td>
                 <td class="fieldValue"> @Model.Identifiant  </td>
+            </tr>
+            <tr> <td class="fieldBloc" colspan="4"> Activité comptable  </td> </tr>
+            <tr>
+                <td class="fieldTitle"> Solde comptable  </td>
+                <td class="fieldValue"><span id="soldeEtDate0" class="soldeSpinner"><img src="~/spinner.svg" style="width:16px;margin-left:20px" /></span></td>
+            </tr>
+            <tr>
+                <td class="fieldTitle">Dernière facture  </td>
+                <td class="fieldValue"><span id="soldeEtDate1" class="soldeSpinner"><img src="~/spinner.svg" style="width:16px;margin-left:20px" /></span></td>
+                <td class="fieldTitle">Dernier règlement</td>
+                <td class="fieldValue"><span id="soldeEtDate2" class="soldeSpinner"><img src="~/spinner.svg" style="width:16px;margin-left:20px" /></span></td>
             </tr>
         </table>
     </div>
 </div>
+@*****************************[SCRIPTS JAVASCRIPT EXECUTES PAR LE NAVIGATEUR]**********************************************************@
+<script type="text/javascript">
+
+    var dlgBoxSupprimeClient = function () {
+        dlgbox("Suppression du client <b>@Model.Numero</b> (@Model.Intitule)",
+            "Confirmez-vous la suppression de ce client ?",
+            function () { supprimeClient(); }
+        );
+    }
+    var supprimeClient = function () {
+        dlgboxCancel(); 
+        spinner();
+        location.href = "/Customers/delete/@Model.Id";
+    }
+ 
+    //Calcul asynchrone du solde comptable, dates derniers facture et règlement du client, asynchrone pour ne pas ralentir l'affichage du détail
+     function calculSoldeEtDates(id) {
+        var ajax = new XMLHttpRequest();
+        var uri = "/Customers/AjaxCalculSoldeEtDates";
+
+        ajax.onreadystatechange = function () {
+            if (ajax.readyState == 4 && ajax.status == 200) {
+                if (ajax.response && ajax.response.substr(0, 6) == "ERROR:") {
+                    affectContextError(ajax.response.substr(6));
+                    return;
+                }
+                var linesResult = ajax.response.split("|");
+                for (var i = 0; i < linesResult.length; i++) {
+                    soldeEtDateObj = document.getElementById("soldeEtDate"+i);
+                    soldeEtDateObj.innerHTML = linesResult[i];
+                    soldeEtDateObj.className = "";
+                }
+            }
+        }
+
+        ajax.open('POST', uri, true);
+        ajax.setRequestHeader("Content-type", "application/x-www-form-urlencoded");
+        ajax.send("Id="+encodeURIComponent(id));
+    }
+    calculSoldeEtDates("@Model.Id");
+
+</script>

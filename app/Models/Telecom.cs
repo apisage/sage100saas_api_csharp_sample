@@ -12,5 +12,17 @@ namespace app.Models
         public string Site { get; set; }
         [JsonProperty("eMail"), DisplayFormat(ConvertEmptyStringToNull = false)]
         public string EMail { get; set; }
+
+        public Telecom()
+        {
+        }
+
+        public Telecom(string site, string eMail, string telecopie, string telephone)
+        {
+            this.Site = site;
+            this.EMail = eMail;
+            this.Telecopie = telecopie;
+            this.Telephone = telephone;
+        }
     }
 }

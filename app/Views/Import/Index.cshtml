@@ -1,52 +1,366 @@
 ﻿@model app.Models.Import
-@inject Microsoft.AspNetCore.Http.IHttpContextAccessor HttpContextAccessor
-@{
-    ViewData["Title"] = "Import";
-}
-
 
 <partial name="Guide" />
 
+@*Variables pour tester la prochaine étape à effectuer ou la dernoère étape effectuée.
+    Note : l'étape 2 "Charger" n'appelant pas le serveur a un traitement spécifique.*@
+@{
+    var nextStep = ViewBag.nextStep;
+    if (nextStep == null) nextStep = 1;
+    var lastStep = nextStep - 1;
+    if (nextStep > 4) nextStep = 0;
+    var anyPiecesAreKO = (ViewBag.errors!=null && ViewBag.errors.Count>0 && ViewBag.errors.Count >= ViewBag.pieces.Count);
+}
+
+
 <div class="main">
     <partial name="Menu" />
-    <form id="request" class="request" action="Import" method="post" enctype="multipart/form-data">
-        <input id="file" name="file" style="display:none" type="file" accept=".txt">
+    <form id="formDetail" action="Detail" method="post"></form>
+    <form id="formCharger" action="Charger" method="post"></form>
+    <form id="formControler" action="Controle" method="post" enctype="multipart/form-data" onsubmit="startControle()">
+        <input id="file" name="file" style="display:none" type="file" accept=".txt" onclick="affectContextError(); showCharger();" onchange="displayFilename();changeStatusButtons();">
+    </form>
+    <form id="formImporter" action="Import" method="post" onsubmit="startImport()"></form>
+
+    <form id="ImportEcritures" class="form">
         <div class="titlepage">
             <h2>Import d'écritures de ventes</h2>
         </div>
         <div class="actionbutton">
-            <a class="button secondary" href="https://developer.sage.com/api/100/fr/saas/guides/samples/exemplesmappage/" target="targetsample">Détail fichier</a>
-            <label for="file" class="button secondary">Charger fichier</label>
-            <button class="button">Importer</button>
+            <button form="formDetail" class="button @Html.Raw((nextStep==1)?"nextstep":((nextStep<1)?"disabled":"secondary"))" disabled="@(nextStep<1)">
+                1. Comprendre
+            </button>
+
+            <label id="charger" class="button @Html.Raw((nextStep==2)?"nextstep":((nextStep<2)?"disabled":"secondary"))" for="@Html.Raw((nextStep<2) ? "" : "file")">
+                2. Charger
+            </label>
+
+            <button id="controler" form="formControler" class="button @Html.Raw((nextStep==3 && !anyPiecesAreKO)?"nextstep":"disabled")" disabled="@(nextStep!=3)">
+                3. Contrôler
+            </button>
+
+            <button id="importer" form="formImporter" class="button @Html.Raw((nextStep==4 && !anyPiecesAreKO)?"nextstep":((nextStep<4 || anyPiecesAreKO)?"disabled":"secondary"))" disabled="@(nextStep<4)">
+                4. Importer
+            </button>
         </div>
+        <span id="filename" class="filename">@ViewBag.filename</span>
+
+
+        @*Disponible sur toutes les pages car l'action Charger ne provoque pas d'appel au serveur*@
+        <div id="showCharger" style="display:none">
+            <ul>
+                <li>Sélectionner le fichier exemple préalablement rapatrié localement ou un autre fichier au même format que le fichier exemple.</li>
+                <li>Passez ensuite à l'étape suivante "<b>3. Contrôler</b>" pour lancer la vérification de cohérence des lignes contenues dans le fichier</li>
+            </ul>
+        </div>
+
+        <div id="showStartControle" style="display:none">
+            <h2>Traitement du contrôle de cohérence des écritures à importer. Veuillez patienter</h2>
+        </div>
+
+        <div id="showStartImport" style="display:none">
+            <h2>Traitement de l'import en cours. Veuillez patienter</h2>
+        </div>
+
+        @*Accueil import*@
         @{
-            if (ViewBag.ErrorsPiece == null)
+            if (lastStep == 0)
             {
                 <div>
                     <ol>
-                        <li class="step">Cliquez sur le bouton <b>Détail fichier</b> pour accéder à la page d'aide et récupérer en local le jeu d'essai à importer.</li>
-                        <li class="step">Une fois le jeu d'essai récupéré sur votre poste local, cliquez sur <b>Charger fichier</b> pour le charger dans l'application.</li>
-                        <li class="step">Cliquez enfin sur le bouton <b>Importer</b> pour importer les pièces comptables du jeu d'essai dans la comptabilité.</li>
+                        <li class="step">Cliquez sur le bouton <b>Comprendre</b> pour lire la page d'explications et récupérer en local un fichier exemple d'écritures comptables à importer.</li>
+                        <li class="step">Une fois le fichier exemple  récupéré sur votre poste local, cliquez sur <b>Charger</b> pour le sélectionner et le charger dans l'application.</li>
+                        <li class="step">Cliquez sur  <b>Contrôler</b> pour vérifier la cohérence des pièces comptables contenues dans le fichier d'import.</li>
+                        <li class="step">Cliquez enfin sur <b>Importer</b> pour importer dans la comptabilité les pièces comptables contrôlées correctes.</li>
+
                     </ol>
                 </div>
-
             }
-            else
+
+            @*Etape 1 on  affiche la documentation*@
+            else if (lastStep == 1)
             {
-                <p>
-                    <b>Bravo !</b> Les pièces comptables sans erreur ont été importées dans la comptabilité et vous pouvez les consulter depuis la saisie des écritures de la comptabilité.
-                </p>
-                <p>
-                    Les pièces suivantes ont été rejetées car non conformes :
-                </p>
-                var errors = ViewBag.ErrorsPiece;
-                <ul class="field__error">
-                    @foreach (var error in errors)
+                <div id="showCurrent">
+                    <div class="showDetail">
+                        <div class="showInfosDetail">
+                        <ul>
+                            <li>Dans la page d'aide ci-dessous, cliquez sur <b>Téléchargez le fichier d'import</b> pour rapatrier sur votre poste local un exemple de fichier d'import.</li>
+                            <li>Consultez également les explications de cette page puis passez à l'étape suivante "<b>2. Charger</b>" pour sélectionner le fichier récupéré localement.</li>
+                            <li>Vous pouvez cliquer sur le bouton <b>Nouvel onglet</b> pour ouvrir la page ci-dessous dans un nouvel onglet.</li>
+                        </ul>
+                        </div>
+                        <div class="showDetailButtonNewTab">
+                            <a class="button secondary showDetailButtonNewTab" href="https://developer.sage.com/api/100/fr/saas/guides/samples/exemplesmappage/" target="_blank">Nouvel onglet</a>
+                        </div>
+                    </div>
+                    <iframe class="frameDetailImport" src="https://developer.sage.com/api/100/fr/saas/guides/samples/exemplesmappage/"></iframe>
+                </div>
+            }
+
+            @*On vient de contrôler, on affiche le résultat*@
+            else if (lastStep == 3)
+            {
+                <div id="showCurrent">
+                    @if (ViewBag.errors.Count == 0)
                     {
-                        <li class="step"> @error  </li>
+                        <p>Aucune erreur n'a été détectée. Vous pouvez maintenant importer les pièces comptables.</p>
+                        <p>Passez à l'étape suivante en cliquant sur <b>4. Importer</b> pour importer les pièces comptables.</p>
+                        <partial name="importpiecesok" />
                     }
-                </ul>
+                    else if (anyPiecesAreKO)
+                    {
+                        <p>Aucune pièce n'est conforme. Vous ne pouvez pas exécuter l'import actuellement.</p>
+                        <partial name="importerrors" />  
+                    }
+                    else
+                    {
+                        <p>A l'étape suivante en cliquant sur "<b>4. Importer</b>" vous n'importerez que les pièces comptables sans erreur.</p>
+                        <partial name="importpiecesok" />
+                        <p>Les pièces suivantes ne seront pas importées car non conformes :</p>
+                        <partial name="importerrors" />                       
+                    }
+                </div>
+            }
+            @*On vient d'importer on informe*@
+            else if (lastStep == 4)
+            {
+    <div id="showCurrent">
+        @if (ViewBag.errors.Count == 0)
+        {
+            @if (ViewBag.ErrorMessage != null)
+            {
+                <span>ERROR : @ViewBag.ErrorMessage</span>
+            }
+
+            <p style="font-size:20px;"><b>Bravo !</b></p>
+            <p>Toutes les pièces comptables du fichier ont été importées dans la comptabilité et vous pouvez les consulter depuis la saisie des écritures de la comptabilité.<br /></p>
+            <partial name="importpiecesok" />
+        }
+        else
+        {
+            @if (ViewBag.ErrorMessage != null)
+            {
+                <span>ERROR : @ViewBag.ErrorMessage</span>
+            }
+
+            <p style="font-size:20px;"><b>Bravo !</b></p>
+            <p>Les pièces comptables sans erreur ont été importées dans la comptabilité et vous pouvez les consulter depuis la saisie des écritures de la comptabilité.<br /></p>
+            <partial name="importpiecesok" />
+            <p>Les pièces suivantes n'ont pas été importées car non conformes :</p>
+            <partial name="importerrors" />
+        }
+    </div>
             }
         }
     </form>
 </div>
+
+@*****************************[SCRIPTS JAVASCRIPT EXECUTES PAR LE NAVIGATEUR]**********************************************************@
+<script type="text/javascript">
+    affectContextError("@Html.Raw(ViewBag.ErrorMessage)");
+
+    function displayFilename() {
+        var file = document.getElementById("file").value;
+        var filename = document.getElementById("filename");
+        if (file) {
+            file = file.split("\\");
+            filename.innerHTML = file[file.length - 1];
+        }
+        if (filename.innerHTML)
+            filename.style.visibility = "visible";
+    }
+
+    function changeStatusButtons() {
+
+        if (document.getElementById("file").value) {
+            controlerBtn = document.getElementById("controler");
+            chargerBtn = document.getElementById("charger");
+            importerBtn = document.getElementById("importer");
+
+            controlerBtn.className = "button nextstep";
+            controlerBtn.disabled = false;
+            chargerBtn.className = "button secondary";
+            importerBtn.className = "button disabled";
+            importerBtn.disabled = true;
+        }
+    }
+
+    function showCharger() {
+        document.getElementById("showCurrent").style.display = "none";
+		document.getElementById("showCharger").style.display = "block";
+    }
+
+    function startControle() {
+        document.getElementById("showCharger").style.display = "none";
+        document.getElementById("showStartControle").style.display = "block";
+    }
+
+    function startImport() {
+        document.getElementById("showCurrent").style.display = "none";
+        document.getElementById("showStartImport").style.display = "block";
+    }
+
+    function showImportPiecesOk() {
+        var ImportPiecesOk = document.getElementById("importPiecesOk");
+        var showImportPiecesOk = document.getElementById("showImportPiecesOk");
+        if (ImportPiecesOk.style.display == "none") {
+            ImportPiecesOk.style.display = "block";
+            showImportPiecesOk.innerHTML = "Masquer les pièces";
+        }
+        else {
+            ImportPiecesOk.style.display = "none";
+            showImportPiecesOk.innerHTML = "Voir toutes les pièces";
+        }
+    }
+
+    displayFilename();
+
+</script>
+
+
+@*****************************[STYLES SPECIFIQUES A CETTE PAGE]**********************************************************@
+<style>
+
+    #showStartControle, #showStartControle {
+        text-align: center;
+        margin-top: 40px;
+    }
+
+    div.showDetail{
+        display:table;
+        width:100%;
+    }
+
+    div.showInfosDetail {
+        display: table-cell;
+    }
+
+    div.showDetailButtonNewTab {
+        display: table-cell;
+        vertical-align: bottom;
+        text-align: right;
+        padding-bottom: 17px;
+    }
+
+    a.showDetailButtonNewTab {
+        float: right;
+    }
+
+    .nextstep {
+        background-color: #c7384f !important;
+        border: 1px solid #c7384f !important;
+        color: #fff !important;
+    }
+
+    .nextstep:hover {
+        background: #940c22 !important;
+        border: 1px solid #940c22 !important;
+    }
+
+    .frameDetailImport {
+        width: 100%;
+        height: 600px;
+        border: 1px solid lightgray;
+    }
+
+    @@media (max-width: 1919px) {
+        .frameDetailImport {
+            width: 125%;
+            height: 960px;
+            zoom: 0.78;
+            -moz-transform: scale(0.78);
+            -moz-transform-origin: 0 0;
+            -webkit-transform: scale(0.80);
+            -webkit-transform-origin: 0 0;
+        }
+    }
+
+    ul > li.importError {
+        font-weight: bold;
+        font-size: larger;
+        color: #c7384f;
+    }
+
+    li > ul.importError {
+        color: #c7384f;
+        font-weight: normal;
+        font-size: initial;
+        padding: 10px;
+    }
+
+    li.step.importError:before {
+        margin-top: 3px;
+        border-color: #c7384f;
+        background-color: #c7384f1a;
+    }
+
+    .filename {
+        display: block;
+        padding: 10px;
+        background-color: rgba(0, 92, 154, 0.16);
+        height: 40px;
+        vertical-align: top;
+        font-size: 16px;
+        text-align: center;
+        color: rgb(0,115,194) !important;
+        width: 40%;
+        text-overflow: ellipsis;
+        overflow: hidden;
+        white-space: nowrap;
+        visibility: hidden;
+    }
+
+    a.showImportPiecesOk{
+        width:215px;
+    }
+
+
+    li.importPiecesOk,li.importPiecesKo {
+        counter-increment: item;
+        list-style: none inside;
+        margin-bottom: 10px;
+        padding-left: 32px;
+        position: relative;
+        margin: 20px 0 0;
+    }
+
+    li.importPiecesOk::before, li.importPiecesKo::before {
+        content: "\2714";
+        justify-content: center;
+        display: inline-flex;
+        align-items: center;
+        text-align: center;
+        position: absolute;
+        font-weight: bold;
+        font-size: 23px;
+        height: 24px;
+        width: 24px;
+        left: 0;
+        top: 0;
+    }
+
+    li.importPiecesOk::before {
+        content: "\2714";
+        color:#66cda3;
+    }
+
+    li.importPiecesKo::before {
+        content: "\2718";
+        color: #c7384f;
+    }
+
+    table.importDetailPieces {
+        width: 40%;
+        font-size: smaller
+    }
+
+    td.importDetailPiecesRight{
+        text-align:right;
+    }
+
+
+
+
+
+
+</style>

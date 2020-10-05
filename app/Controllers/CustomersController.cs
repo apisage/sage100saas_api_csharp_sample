@@ -2,304 +2,171 @@
 using System.Collections.Generic;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.Http;
-using Newtonsoft.Json.Linq;
 using Newtonsoft.Json;
 using app.Models;
 using app.Repositories;
 using Microsoft.AspNetCore.Authentication;
 using Newtonsoft.Json.Serialization;
 using app.Settings;
-using System.Net;
-using Microsoft.Extensions.Options;
+using System.Globalization;
+using System.Net.Http;
 
 namespace app.Controllers
 {
     public class CustomersController : Controller
     {
-        private readonly string _resourceName = "clients";
 
-        /// <summary>s
-        /// Affiche la vue principale Customers.
+        //****************************[LISTE DES CLIENTS]*******************************************************************
+        /// <summary>
+        /// Affiche liste des clients éventuellement filtrée par un terme de recherche.
         /// </summary>
-        /// <returns> La vue Customers. </returns>
-        [ResponseCache(Duration = 0, Location = ResponseCacheLocation.None, NoStore = true)]
-        public IActionResult Index(string searchTerm = "", string skip = "0", string top = "10")
+        /// <returns> La liste des clients </returns>
+        public IActionResult Index(string searchTerm = "", string skip = "0", string top = "10", string DefaultSorting="numero",string SortingDesc="")
         {
-            // Persistence du token et de la société.
-            string accessToken = HttpContext.GetTokenAsync("access_token").Result;
-            var repository = APIRepository.Create(accessToken);
-
-            var companyId = ApplicationSettings.CompanyId;
-            if (string.IsNullOrEmpty(accessToken) || string.IsNullOrEmpty(companyId))
-            {
-                Error error = new Error(string.Empty, (int)HttpStatusCode.Unauthorized);
-                return View("Error", error);
-            }
+            //Contrôle token et company et création d'un repository
+            var repository = APIRepository.Create(HttpContext.GetTokenAsync("access_token").Result, ApplicationSettings.CompanyId);
+            if (repository.ErrorCode == "TOKENEXPIRED") return RedirectToRoute(Tools.forceAuthentication);
+            if (repository.ErrorMessage != "") return View("Error", new Error(repository.ErrorMessage));
 
             // Construction de la requête de recherche OData.
             // [API04] Récupération des clients selon le champ de recherche.
-            Dictionary<string, string> options = new Dictionary<string, string>();
-            var qryCount = "true";
+            var qryOrderBy = (SortingDesc != "Y")?DefaultSorting: String.Join(" desc,", DefaultSorting.Split(",")) + " desc";
             var qrySkip = skip ?? "0";
-            var qryTop = "0";
-            var qryOrderby = "intitule,numero";
-            var qrySelect = "id,intitule,numero,adresse,telecom/telephone";
-            var qryFilter = (string.IsNullOrEmpty(searchTerm)) ? null : "contains(tolower(intitule), '{searchTerm}') or contains(tolower(numero), '{searchTerm}')";
-            options.Add("$count", qryCount);
-            options.Add("$top", qryTop);
+            var qryFilter = (string.IsNullOrEmpty(searchTerm)) ? "" : "contains(tolower(intitule), '"+ searchTerm.ToLower() + "') or contains(tolower(numero), '"+ searchTerm.ToLower() + "')";
+ 
+            Dictionary<string, string> options = new Dictionary<string, string>();
 
-            if (!string.IsNullOrEmpty(qryFilter))
-            {
-                qryFilter = qryFilter.Replace("{searchTerm}", searchTerm.ToLower());
-                options.Add("$filter", qryFilter);
-            }
+            // Récupération du nombre total d'enregistrements répondant au critère de filtre
+            options.Clear();
+            options.Add("$count", "true");
+            options.Add("$top", "0");
+            options.Add("$filter", qryFilter);
+            var result = repository.Get(repository.CompanyId, "clients", options);
+            if (!Tools.IsSuccess(result)) 
+                return View("Error", ApplicationSettings.ApiError);         
+            var count = result.GetJSONResult()["@odata.count"].ToString();
 
-            // Une requête avec count séparé est avantageux pour les performances.
-            var messageCount = repository.Get(companyId, _resourceName, options);
+            // Récupération d'un lot d'enregistrements
+            options.Clear();
+            options.Add("$orderby", qryOrderBy);
+            options.Add("$select", "id,intitule,numero,adresse,telecom/telephone");
+            options.Add("$filter", qryFilter);
+            options.Add("$top", top);
+            options.Add("$skip", qrySkip);  
+            result = repository.Get(repository.CompanyId, "clients", options);
+            if (!Tools.IsSuccess(result)) 
+                return View("Error", ApplicationSettings.ApiError);
 
-            if (!Tools.IsSuccess(messageCount))
-            {
-                var details = "Désolé ! La liste des clients n'a pas pu être récupéré.";
-                Error error = new Error(details);
-
-                return View("Error", error);
-            }
-
-            var count = messageCount.GetJSONResult()["@odata.count"].ToString();
-            options["$top"] = top;
-            options.Remove("$count");
-            options.Add("$skip", qrySkip);
-            options.Add("$orderby", qryOrderby);
-            options.Add("$select", qrySelect);
-            var message = repository.Get(companyId, _resourceName, options);
-
-            if (!Tools.IsSuccess(message))
-            {
-                var details = "Désolé ! La liste des clients n'a pas pu être récupéré.";
-                Error error = new Error(details);
-
-                return View("Error", error);
-            }
-
+            //Affectation des propriétés du ViewBag
             ViewBag.Results = Int32.Parse(count);
             ViewBag.ResultsByPage = Int32.Parse(top);
-            ViewBag.Clients = message.GetJSONResult();
+            ViewBag.Clients = result.GetJSONResult();
             ViewBag.SearchTerm = searchTerm;
-            ViewBag.options = options;
-            var page = Int32.Parse(qrySkip);
-            ViewBag.CurrentPage = (page != 0) ? (page) : 1;
+            ViewBag.Options = options;
+            ViewBag.CurrentPage = (qrySkip != "0") ? (Int32.Parse(qrySkip)) : 1;
+            ViewBag.Columns = ColumnsListCustomer.LoadColumns();
+            ViewBag.DefaultSorting = DefaultSorting;
+            ViewBag.SortingDesc = SortingDesc;
 
             return View();
         }
 
+        //****************************[AJAX CALCUL DU SOLDE D'UN LOT DE CLIENTS]*******************************************************************
+        // Traitement Ajax calcule et renvoie le solde de la liste des numeros clients séparés par un |
+        // <Request.Form>les numéros de client séparés par un |
+        // <returns> un string sous la forme numero~solde|numero~solde|... </returns>
+        [HttpPost("Customers/AjaxCalculSolde")]
+        public  ContentResult AjaxCalculSolde()
+        {
+            //Contrôle token et company et création d'un repository
+            var repository = APIRepository.Create(HttpContext.GetTokenAsync("access_token").Result, ApplicationSettings.CompanyId,true);
+ 			if (repository.ErrorMessage != "") return Content("ERROR:AjaxCalculSolde : "+repository.ErrorMessage);
+            
+		    string retour = "";
+            HttpResponseMessage result;
+            // Récupération du solde pour chaque client dont le numéro est mentionné dans numeros   
+            try
+            {
+                foreach (string id in HttpContext.Request.Form.Keys)
+                {
+                    result = repository.Get(repository.CompanyId, "clients", null, id, "solde()");
+                    if (!Tools.IsSuccess(result))
+                        return Content("ERROR:AjaxCalculSolde : " + Tools.FormateErrorApi(result));
+                    var solde = Convert.ToDecimal(result.GetJSONResult()["value"].ToString()).ToString("C2", new CultureInfo("fr-FR"));
+                    retour += ((retour != "") ? "|" : "") + id + "~" + solde;
+                }
+            }
+            catch(Microsoft.AspNetCore.Server.Kestrel.Core.BadHttpRequestException)
+            {
+                retour = "ERROR:AjaxCalculSolde : 'Unexpected end of request content";
+            }
+        
+            return Content(retour);
+        }
+
+        //****************************[FORMULAIRE NOUVEAU CLIENT]*******************************************************************
         /// <summary>
         /// Affiche et gère la formulaire d'ajout de Customer.
         /// </summary>
         /// <returns> La vue avec le nouveau Customer. </returns>
-        [Route("Customers/add"), ResponseCache(Duration = 0, Location = ResponseCacheLocation.None, NoStore = true)]
+        [HttpGet("Customers/add")]
+        public IActionResult Add()
+        {
+            ViewBag.Action = "add";
+
+            //Contrôle token et company et création d'un repository
+            var repository = APIRepository.Create(HttpContext.GetTokenAsync("access_token").Result, ApplicationSettings.CompanyId);
+            if (repository.ErrorCode == "TOKENEXPIRED") return RedirectToRoute(Tools.forceAuthentication);
+            if (repository.ErrorMessage != "") return View("Error", new Error(repository.ErrorMessage));
+
+            // [API06] Récupération des paramètres
+            LoadParameters(repository);
+
+            Customer customer = new Customer
+            {
+                Adresse = new Address(),
+                Telecom = new Telecom()
+            };
+
+            return View(customer);
+        }
+
+        //****************************[VALIDATION NOUVEAU CLIENT]*******************************************************************
+        [HttpPost("Customers/add")]
         public IActionResult Add(Customer customer, Address address, Telecom telecom)
         {
             ViewBag.Action = "add";
 
-            // Gestion du token.
-            string accessToken = HttpContext.GetTokenAsync("access_token").Result;
-            var repository = APIRepository.Create(accessToken);
+            //Contrôle token et company et création d'un repository
+            var repository = APIRepository.Create(HttpContext.GetTokenAsync("access_token").Result, ApplicationSettings.CompanyId);
+            if (repository.ErrorCode == "TOKENEXPIRED") return RedirectToRoute(Tools.forceAuthentication);
+            if (repository.ErrorMessage != "") return View("Error", new Error(repository.ErrorMessage));
 
-            var companyId = ApplicationSettings.CompanyId;
-            if (string.IsNullOrEmpty(accessToken) || string.IsNullOrEmpty(companyId))
-            {
-                HttpContext.Response.Redirect("/");
-                return View();
-            }
-
-            // [API06] Récupération des comptes généraux dans le formulaire d'ajout.
-            var accounts = GetActiveAccountsStartingWithNumber(repository, companyId, "41");
-            ViewBag.Accounts = accounts["value"];
-
-            Customer model = new Customer
-            {
-                Adresse = address,
-                Telecom = telecom
-            };
-
-            bool customerIsNull = Customer.IsNull(customer);
-            bool customerIsEmpty = Customer.IsEmpty(customer);
-
-            if (customerIsNull)
-            {
-                return View(model);
-            }
-
-            // Lie les données adresse et telecom au client.
             customer.Adresse = address;
             customer.Telecom = telecom;
-
-            // Les valeurs du formulaire ne seront pas réinitialisés même s'il y a une erreur.
-            model = customer;
-
-            // Le formulaire a été envoyé.
-            if (customerIsEmpty)
-            {
-                ViewBag.ErrorMessage = "Le numéro, l'intitulé ou le type ne peuvent être des champs vides.";
-                return View(model);
-            }
-
             customer.Numero = customer.Numero.ToUpper();
 
-            // Il ne peut exister deux clients avec le même compte tiers (Numero).
-            Dictionary<string, string> optionsDuplicate = new Dictionary<string, string>();
-            var numeroFilter = "numero eq '{numero}'";
-            numeroFilter = numeroFilter.Replace("{numero}", customer.Numero);
-            optionsDuplicate.Add("$filter", numeroFilter);
-            var messageDuplicate = repository.Get(companyId, _resourceName, optionsDuplicate);
+            // [API06] Récupération des paramètres
+            LoadParameters(repository);
 
-            if (Tools.IsSuccess(messageDuplicate))
+            // Contrôle sécurité champs obligatoires non vides (Mais par défaut le formulaire empêche déjà de valider si champs obligatoires vides)
+            if (Customer.IsEmpty(customer))
             {
-                var duplicate = messageDuplicate.GetJSONResult()["value"];
-
-                if (duplicate.HasValues)
-                {
-                    ViewBag.ErrorMessage = "Ce compte tiers est déjà enregistré. Il ne peut exister de doublons.";
-                    return View(model);
-                }
+                ViewBag.ErrorMessage = Resource.CLIENT_MANDATORY_FIELDS;
+                return View(customer);
             }
 
+            // Il ne peut exister deux clients avec le même compte tiers (numero).
+            var tiersExist = ControlTiersAlreadyExist(customer.Numero, repository);
+            if (tiersExist!="")
+            {
+                ViewBag.ErrorMessage = tiersExist;
+                return View(customer);
+            }
+            
             // [API07] Ajout des données du client - Envoi des données.
-            var accountId = "/comptes('{accountId}')";
-            accountId = accountId.Replace("{accountId}", customer.ComptePrincipal);
-
-
             // Liaison du compte principal au client à ajouter.
-            customer.ComptePrincipal = string.Concat(repository._BASE_URL, companyId, accountId);
-
-            // Conversion de Customer en données exploitables par la méthode POST.
-            var data = JsonConvert.SerializeObject(customer, new JsonSerializerSettings
-            {
-                ContractResolver = new CamelCasePropertyNamesContractResolver()
-            });
-
-            // Envoi des données pour l'ajout.
-            var result = repository.Post(companyId, _resourceName, data);
-
-            // Gestion d'erreurs.
-            if (!result.IsSuccessStatusCode)
-            {
-                var reason = result.ReasonPhrase;
-                var explanation = result.Content.ReadAsStringAsync().Result;
-                var message = JsonConvert.DeserializeObject<JObject>(explanation);
-                var error = string.Concat(message["error"]["code"], " (", reason, ")", " - ", message["error"]["message"].ToString());
-                ViewBag.ErrorMessage = error;
-            }
-            else
-            {
-                // Redirection.
-                return RedirectToRoute(new
-                {
-                    controller = "Customers",
-                    action = "Index",
-                    searchTerm = customer.Intitule
-                });
-            }
-
-            return View(model);
-        }
-
-        /// <summary>
-        /// Affiche les informations d'un client.
-        /// </summary>
-        /// <param name="id"> Id du client dont on souhaite consulter les informations. </param>
-        /// <returns> La vue du cient. </returns>
-        [Route("Customers/show/{id}"), ResponseCache(Duration = 0, Location = ResponseCacheLocation.None, NoStore = true)]
-        public IActionResult Get(string id)
-        {
-            // Construction de la requête OData afin d'obtenir une requête précise.
-            Dictionary<string, string> options = new Dictionary<string, string>();
-            var filter = "id eq ('{customerId}')";
-            filter = filter.Replace("{customerId}", id);
-            options.Add("$filter", filter);
-
-            // Gestion du token.
-            string accessToken = HttpContext.GetTokenAsync("access_token").Result;
-            var repository = APIRepository.Create(accessToken);
-
-            var companyId = ApplicationSettings.CompanyId;
-            if (string.IsNullOrEmpty(accessToken) || string.IsNullOrEmpty(companyId))
-            {
-                HttpContext.Response.Redirect("/");
-                return View();
-            }
-
-            // [API05] Récupération des données pour la consultation d'une fiche client.
-            var details = repository.Get(companyId, _resourceName, options).GetJSONResult();
-            Customer model = ConvertToCustomer(companyId, details);
-
-            return View(model);
-        }
-
-        /// <summary>
-        /// Mise à jour d'un client.
-        /// </summary>
-        /// <param name="customer"> Contient les nouvelles valeurs pour chaque propriété non objet. </param>
-        /// <param name="address"> Contient les nouvelles valeurs pour l'objet adresse.</param>
-        /// <param name="telecom"> Contient les nouvelles valeurs pour l'objet telecom.</param>
-        /// <returns> The view of a customer. </returns>
-        [Route("Customers/edit/{id}"), ResponseCache(Duration = 0, Location = ResponseCacheLocation.None, NoStore = true)]
-        public IActionResult Edit(Customer customer, Address address, Telecom telecom)
-        {
-            // Gestion du token.
-            string accessToken = HttpContext.GetTokenAsync("access_token").Result;
-            var repository = APIRepository.Create(accessToken);
-
-            var companyId = ApplicationSettings.CompanyId;
-            if (string.IsNullOrEmpty(accessToken) || string.IsNullOrEmpty(companyId))
-            {
-                HttpContext.Response.Redirect("/");
-                return View();
-            }
-
-            customer.Adresse = address;
-            customer.Telecom = telecom;
-
-            // [API08] Récupération des comptes généraux dans le formulaire d'édition.
-            var accounts = GetActiveAccountsStartingWithNumber(repository, companyId, "41");
-            ViewBag.Accounts = accounts["value"];
-            ViewBag.Action = "edit";
-
-            // Construction de la requête OData afin d'éditer le client correspondant.
-            Dictionary<string, string> options = new Dictionary<string, string>();
-            var filter = "id eq ('{customerId}')";
-            filter = filter.Replace("{customerId}", customer.Id);
-            options.Add("$filter", filter);
-
-            // [API09] Affichage des anciennes valeurs par défaut dans le formulaire d'édition.
-            var details = repository.Get(companyId, _resourceName, options).GetJSONResult();
-            Customer model = ConvertToCustomer(companyId, details);
-
-            bool customerIsNull = Customer.IsNull(customer);
-            bool customerIsEmpty = Customer.IsEmpty(customer);
-
-            if (customerIsNull)
-            {
-                return View(model);
-            }
-
-            // Mise à jour avec les nouvelles valeurs.
-            model = customer;
-
-            // Le formulaire a été envoyé.
-            if (customerIsEmpty)
-            {
-                ViewBag.ErrorMessage = "Le numéro, l'intitulé ou le type ne peuvent être des champs vides.";
-                return View(model);
-            }
-
-            // [API10] Edition des données du client - Envoi des données.
-            var accountId = "/comptes('{accountId}')";
-            accountId = accountId.Replace("{accountId}", customer.ComptePrincipal);
-            customer.Numero = customer.Numero.ToUpper();
-
-            // Liaison odata.bind pour lier le compte au client.
-            customer.ComptePrincipal = string.Concat(repository._BASE_URL, companyId, accountId);
+            customer.ComptePrincipal = Tools.OdataBind(repository, "comptes", customer.ComptePrincipal);
 
             // Conversion en données exploitables.
             var data = JsonConvert.SerializeObject(customer, new JsonSerializerSettings
@@ -307,18 +174,14 @@ namespace app.Controllers
                 ContractResolver = new CamelCasePropertyNamesContractResolver()
             });
 
-            var resourceId = string.Concat(_resourceName, "('{customerId}')");
-            resourceId = resourceId.Replace("{customerId}", model.Id);
-            var result = repository.Patch(companyId, resourceId, data);
+            // Envoi des données pour l'ajout.
+            var result = repository.Post(repository.CompanyId, "clients", data);
 
-            // Si la mise à jour échoue, on affiche une erreur.
+            // Si ajout refusé par l'API
             if (!result.IsSuccessStatusCode)
             {
-                var reason = result.ReasonPhrase;
-                var explanation = result.Content.ReadAsStringAsync().Result;
-                var message = JsonConvert.DeserializeObject<JObject>(explanation);
-                var error = string.Concat(message["error"]["code"], " (", reason, ")", " - ", message["error"]["message"].ToString());
-                ViewBag.ErrorMessage = error;
+                ViewBag.ErrorMessage = Tools.FormateErrorApi(result);
+                return View(customer);
             }
             else
             {
@@ -327,88 +190,268 @@ namespace app.Controllers
                 {
                     controller = "Customers",
                     action = "Get",
-                    id = model.Id
-                });
+                    id = result.GetJSONResult()["id"].ToString(),
+                    refresh = Guid.NewGuid().ToString()
+                }) ;
+            }
+        }
+
+        //****************************[DETAIL CLIENT]*******************************************************************
+        /// <summary>
+        /// Affiche les informations d'un client.
+        /// </summary>
+        /// <param name="id"> Id du client dont on souhaite consulter les informations. </param>
+        /// <returns> La vue du client. </returns>
+        [HttpGet("Customers/show/{id}")]
+        public IActionResult Get(string id)
+        {
+            //Contrôle token et company et création d'un repository
+            var repository = APIRepository.Create(HttpContext.GetTokenAsync("access_token").Result, ApplicationSettings.CompanyId);
+            if (repository.ErrorCode == "TOKENEXPIRED") return RedirectToRoute(Tools.forceAuthentication);
+            if (repository.ErrorMessage != "") return View("Error", new Error(repository.ErrorMessage));
+
+            // [API05] Consultation d'une fiche client.
+            var customer = GetCustomerById(id, repository);
+            if (Customer.IsNull(customer) || Customer.IsEmpty(customer))
+                return View("Error", new Error(Resource.CLIENT_NOTFOUND));          
+
+            return View(customer);
+        }
+
+        //****************************[AJAX CALCUL SOLDE et DATES D'UN CLIENT]*******************************************************************
+        // Traitement Ajax calcule et renvoie le solde et les dates dernière facture et règlement d'un client
+        // <Request.Form>l'id du client
+        // <returns> un string sous la forme solde|datefacture|datereglement </returns>
+        [HttpPost("Customers/AjaxCalculSoldeEtDates")]
+        public ContentResult AjaxCalculSoldeEtDates()
+        {
+            //Contrôle token et company et création d'un repository
+            var repository = APIRepository.Create(HttpContext.GetTokenAsync("access_token").Result, ApplicationSettings.CompanyId, true);
+            if (repository.ErrorMessage != "") return Content("ERROR:AjaxCalculSoldeEtDates : " + repository.ErrorMessage);
+
+            string retour, value;
+            HttpResponseMessage result;
+            string id = HttpContext.Request.Form["Id"];
+
+            // Récupération du solde et des dates pour le client courant 
+            try
+            {
+                result = repository.Get(repository.CompanyId, "clients", null, id, "solde()");
+                if (!Tools.IsSuccess(result))
+                    return Content("ERROR:AjaxCalculSoldeEtDates Solde : " + Tools.FormateErrorApi(result));
+                value = result.GetJSONResult()["value"].ToString();
+                retour = Convert.ToDecimal(result.GetJSONResult()["value"].ToString()).ToString("C2", new CultureInfo("fr-FR"));
+
+                result = repository.Get(repository.CompanyId, "clients", null, id, "derniereFacture()");
+                if (!Tools.IsSuccess(result))
+                    return Content("ERROR:AjaxCalculSoldeEtDates DateFacture : " + Tools.FormateErrorApi(result));
+                value = result.GetJSONResult()["value"].ToString();
+                retour += "|" + ((Convert.ToDateTime(value) == DateTime.MinValue) ? "": Convert.ToDateTime(value).ToString("d", new CultureInfo("fr-FR")));
+
+                result = repository.Get(repository.CompanyId, "clients", null, id, "dernierReglement()");
+                if (!Tools.IsSuccess(result))
+                    return Content("ERROR:AjaxCalculSoldeEtDates DateReglement : " + Tools.FormateErrorApi(result));
+                value = result.GetJSONResult()["value"].ToString();
+                retour += "|" + ((Convert.ToDateTime(value) == DateTime.MinValue) ? "" : Convert.ToDateTime(value).ToString("d", new CultureInfo("fr-FR")));
+            }
+            catch (Microsoft.AspNetCore.Server.Kestrel.Core.BadHttpRequestException)
+            {
+                retour = "ERROR:AjaxCalculSoldeEtDates : 'Unexpected end of request content";
             }
 
-            return View(model);
+            return Content(retour);
         }
 
+        //****************************[AJAX TEST DOUBLON COMPTE TIERS]*******************************************************************
         /// <summary>
-        /// 
+        /// Traitement Ajax contrôle si numéro nouveau client existe déjà dans l'ensemble des tiers
         /// </summary>
-        /// <param name="repository"></param>
-        /// <param name="companyId"></param>
+        /// <param name="numero"> Le numéro du nouveau client saisi dans le formulaire </param>
+        /// <returns> un texte d'avertissement si le numéro tiers existe déjà </returns>
+        [HttpGet("Customers/AjaxCheckClientNumber/{numero}")]
+        public ContentResult CheckClientNumber(string numero)
+        {
+            //Contrôle token et company et création d'un repository
+            var repository = APIRepository.Create(HttpContext.GetTokenAsync("access_token").Result, ApplicationSettings.CompanyId);
+            if (repository.ErrorMessage != "") return Content("ERROR:AjaxCalculSolde : " + repository.ErrorMessage);
+
+            return Content(ControlTiersAlreadyExist(numero,repository));
+        }
+
+        //****************************[FORMULAIRE MODIFICATION CLIENT]*******************************************************************
+        /// <summary>
+        /// Affiche la vue du formulaire d'édition.
+        /// </summary>
+        /// <param name="id"> Le client à éditer. </param>
+        /// <returns> La vue du formulaire d'édition du client. </returns>
+        [HttpGet("Customers/edit/{id}")]
+        public IActionResult Edit(string id)
+        {
+            ViewBag.Action = "edit";
+
+            //Contrôle token et company et création d'un repository
+            var repository = APIRepository.Create(HttpContext.GetTokenAsync("access_token").Result, ApplicationSettings.CompanyId);
+            if (repository.ErrorCode == "TOKENEXPIRED") return RedirectToRoute(Tools.forceAuthentication);
+            if (repository.ErrorMessage != "") return View("Error", new Error(repository.ErrorMessage));
+
+            // [API06] Récupération des paramètres
+            LoadParameters(repository);
+
+            Customer customer = GetCustomerById(id, repository);
+
+            return View(customer);
+        }
+
+        //****************************[VALIDATION MODIFICATION CLIENT]*******************************************************************
+        /// <summary>
+        /// Mise à jour d'un client.
+        /// </summary>
+        /// <param name="customer"> Contient les nouvelles valeurs pour chaque propriété non objet. </param>
+        /// <param name="address"> Contient les nouvelles valeurs pour l'objet adresse.</param>
+        /// <param name="telecom"> Contient les nouvelles valeurs pour l'objet telecom.</param>
+        /// <returns> La vue de la fiche client. </returns>
+        [HttpPost("Customers/edit/{id}")]
+        public IActionResult Edit(Customer customer, Address address, Telecom telecom, string id)
+        {
+            ViewBag.Action = "edit";
+
+            //Contrôle token et company et création d'un repository
+            var repository = APIRepository.Create(HttpContext.GetTokenAsync("access_token").Result, ApplicationSettings.CompanyId);
+            if (repository.ErrorCode == "TOKENEXPIRED") return RedirectToRoute(Tools.forceAuthentication);
+            if (repository.ErrorMessage != "") return View("Error", new Error(repository.ErrorMessage));
+
+            customer.Adresse = address;
+            customer.Telecom = telecom;
+            customer.Numero = customer.Numero.ToUpper();
+
+            // [API06] Récupération des paramètres
+            LoadParameters(repository);
+
+            if (Customer.IsEmpty(customer))
+            {
+                ViewBag.ErrorMessage = Resource.CLIENT_MANDATORY_FIELDS;
+                return View(customer);
+            }
+
+            // [API10] Edition des données du client - Envoi des données.
+            customer.ComptePrincipal = Tools.OdataBind(repository, "comptes", customer.ComptePrincipal);
+
+            // Conversion en données exploitables.
+            var data = JsonConvert.SerializeObject(customer, new JsonSerializerSettings
+            {
+                ContractResolver = new CamelCasePropertyNamesContractResolver()
+            });
+
+            var result = repository.Patch(repository.CompanyId, "clients", data, id);
+
+            // Si la mise à jour échoue, on affiche une erreur.
+            if (!result.IsSuccessStatusCode)
+            {
+                ViewBag.ErrorMessage= Tools.FormateErrorApi(result);
+                return View(customer);
+            }
+            else
+            {
+                // Redirection.
+                return RedirectToRoute(new
+                {
+                    controller = "Customers",
+                    action = "Get",
+                    id = customer.Id,
+                    refresh = Guid.NewGuid().ToString()
+                });
+            }
+        }
+
+        //****************************[SUPPRESSION CLIENT]*******************************************************************
+        /// <summary>
+        /// Supprime un client.
+        /// </summary>
+        /// <param name="id"> L'id du client. </param>
         /// <returns></returns>
-        private JObject GetActiveAccountsStartingWithNumber(APIRepository repository, string companyId, string numero)
+        [Route("Customers/delete/{id}")]
+        public IActionResult Delete(string id)
         {
-            // Remplissage de la liste déroulante avec les comptes généraux dans le formulaire d'ajout.
-            // Nous ne considérons que les comptes actifs (commençant par 41), et un nombre de comptes inférieure à 100, auquel cas nous aurions besoin d'implémenter la pagination du à la limite de requête.
-            // Pour plus d'informations à ce sujet:
-            // https://developer.sage.com/api/100/fr/saas/ressources/.
-            // https://developer.sage.com/api/100/fr/saas/concepts/odatapaginate/
+            //Contrôle token et company et création d'un repository
+            var repository = APIRepository.Create(HttpContext.GetTokenAsync("access_token").Result, ApplicationSettings.CompanyId);
+            if (repository.ErrorCode == "TOKENEXPIRED") return RedirectToRoute(Tools.forceAuthentication);
+            if (repository.ErrorMessage != "") return View("Error", new Error(repository.ErrorMessage));
 
-            Dictionary<string, string> accountOptions = new Dictionary<string, string>();
-            var select = "id,type,numero";
-            var filterAccount = "startswith(numero,'{numero}') and sommeil eq false";
-            filterAccount = filterAccount.Replace("{numero}", numero);
-            accountOptions.Add("$select", select);
-            accountOptions.Add("$filter", filterAccount);
-            var accounts = repository.Get(companyId, "comptes", accountOptions).GetJSONResult();
+            repository.Delete(repository.CompanyId, "clients", id);
 
-            return accounts;
+            // Redirection.
+            return RedirectToRoute(new
+            {
+                controller = "Customers",
+                action = "Index"
+            });
         }
 
         /// <summary>
-        /// Associe les champs d'un JOBject au modèle Customer.
+        /// Récupère un objet Customer selon un id donné.
         /// </summary>
-        /// <param name="companyId"> L'id de la société. </param>
-        /// <param name="details"> Le JObject a convertir en Customer. </param>
-        [ResponseCache(Duration = 0, Location = ResponseCacheLocation.None, NoStore = true)]
-        private Customer ConvertToCustomer(string companyId, JObject details)
+        /// <param name="id"> L'id du client à récupérer. </param>
+        /// <param name="repository"> Le repository. </param>
+        /// <returns>Un objet Customer.</returns>
+        public Customer GetCustomerById(string id, APIRepository repository)
         {
-            Customer model = new Customer();
-            var client = details["value"][0];
-            model.Id = client["id"].ToString();
-            model.Ape = client["ape"].ToString();
-            model.Classement = client["classement"].ToString();
-            model.Commentaire = client["commentaire"].ToString();
-            model.Contact = client["contact"].ToString();
+            // Construction de la requête OData afin de récupérer le client correspondant.
+            Dictionary<string, string> options = new Dictionary<string, string>();
+            var expand = "comptePrincipal($select=id,numero)";
+            options.Add("$expand", expand);
+            var result = repository.Get(repository.CompanyId, "clients", options, id);
 
-            model.Identifiant = client["identifiant"].ToString();
-            model.Intitule = client["intitule"].ToString();
-            model.Numero = client["numero"].ToString();
-            model.Qualite = client["qualite"].ToString();
-            model.Siret = client["siret"].ToString();
-            model.Type = client["type"].ToString();
+            if (!Tools.IsSuccess(result))
+                return new Customer(new Address(), new Telecom());
 
-            string accessToken = HttpContext.GetTokenAsync("access_token").Result;
-            var repository = APIRepository.Create(accessToken);
+            Customer customer = Tools.ConvertToCustomer(result.GetJSONResult());
+            return customer;
+        }
 
-            // Compte principal lié au client.
-            var endpoint = "clients('{clientId}')/comptePrincipal";
-            endpoint = endpoint.Replace("{clientId}", model.Id);
-            var account = repository.Get(companyId, endpoint, new Dictionary<string, string>()).GetJSONResult();
-            model.ComptePrincipal = account["numero"].ToString();
+        /// <summary>
+        /// Récupération des paramètres (type comptes généraux, pays). Alimente les propriétés de ViewBag.
+        /// </summary>
+        /// <param name="repository">Repository courant</param>
+        public void LoadParameters(APIRepository repository)
+        {
+            Dictionary<string, string> options = new Dictionary<string, string>();
 
-            model.Adresse = new Address();
-            model.Telecom = new Telecom();
+            //Liste des comptes généraux commençant par 41
+            options.Clear();
+            options.Add("$select", "id,type,numero");
+            options.Add("$filter", "startswith(numero,'41') and sommeil eq false");
+            options.Add("$orderby", "numero");
+            ViewBag.Accounts = repository.Get(repository.CompanyId, "comptes", options).GetJSONResult()["value"];
 
-            // Adresse.
-            model.Adresse.adresse = client["adresse"]["adresse"].ToString();
-            model.Adresse.Pays = client["adresse"]["pays"].ToString();
-            model.Adresse.Complement = client["adresse"]["complement"].ToString();
-            model.Adresse.CodePostal = client["adresse"]["codePostal"].ToString();
-            model.Adresse.CodeRegion = client["adresse"]["codeRegion"].ToString();
-            model.Adresse.Ville = client["adresse"]["ville"].ToString();
+            //Liste des pays
+            options.Clear();
+            options.Add("$select", "intitule");
+            options.Add("$orderby", "intitule");
+            ViewBag.Pays = repository.Get(repository.CompanyId, "pays", options).GetJSONResult()["value"];
+        }
 
-            // Telecom.
-            model.Telecom.Site = client["telecom"]["site"].ToString();
-            model.Telecom.EMail = client["telecom"]["eMail"].ToString();
-            model.Telecom.Telecopie = client["telecom"]["telecopie"].ToString();
-            model.Telecom.Telephone = client["telecom"]["telephone"].ToString();
+        /// <summary>
+        /// Controle si le numero de Tiers saisi existe et si oui retourne un message d'erreur
+        /// </summary>
+        /// <param name="numero"> Le compte tiers à tester </param>
+        /// <param name="repository">Le repository </param>
+        /// <returns>Un string avec le message formaté si le tiers existe déjà ou une chaine vide si inexistant</returns>
+        private string ControlTiersAlreadyExist(string numero, APIRepository repository)
+        {
+            Dictionary<string, string> options = new Dictionary<string, string>();
+            options.Add("$filter", "numero eq '" + numero.ToUpper() + "'");
+            options.Add("$select", "numero,intitule,adresse,type");
 
-            return model;
+            var result = repository.Get(repository.CompanyId, "tiers", options);
+            if (!Tools.IsSuccess(result))
+                return "ERROR:" + Tools.FormateErrorApi(result);
+
+            var values = result.GetJSONResult()["value"];
+            if (!values.HasValues) return "";
+            return Resource.CLIENT_ALREADY_EXIST.
+                Replace("{numero}", "<b>"+values[0]["numero"].ToString()+"</b>").
+                Replace("{intitule}","<b>"+ values[0]["intitule"].ToString()+"</b>").
+                Replace("{type}", "<b>"+values[0]["type"].ToString()+"</b>");
         }
     }
 }

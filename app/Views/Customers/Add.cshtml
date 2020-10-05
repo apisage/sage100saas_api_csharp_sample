@@ -1,15 +1,10 @@
-﻿@using Microsoft.AspNetCore.Http
-@model app.Models.Customer
-@inject Microsoft.AspNetCore.Http.IHttpContextAccessor HttpContextAccessor
-@{
-    ViewData["Title"] = "Ajout";
-}
+﻿@model app.Models.Customer
 
 <partial name="Guide" />
 
 <div class="main">
     <partial name="Menu" />
-    <form id="request" class="request" action="Add" method="post">
+    <form id="customer" class="form" action="/Customers/add" method="post" spellcheck="false" autocomplete="off">
         <input class="field__input" type="hidden" id="resource" name="resource" value="clients" />
         <input class="field__input" type="hidden" id="type" name="type" value="Client" />
         <input class="field__input" type="hidden" id="id" name="id" value="" />
@@ -21,4 +16,5 @@
         </div>
     </form>
 </div>
+
 

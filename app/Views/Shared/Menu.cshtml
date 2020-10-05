@@ -1,19 +1,42 @@
-﻿@{
-
-    ViewData["Title"] = "Menu";
+﻿
+@{
+    bool ConfigFileOk = !Startup.GetPathOfConfigFile().Equals(string.Empty);
+    bool UserConnected = User.Identity.IsAuthenticated;
+    bool companyFound = !string.IsNullOrEmpty(app.Settings.ApplicationSettings.CompanyName);
 }
-<div class="menu">
-    <a class="button addspinner" href="/">Accueil</a>
 
-    @if (!Startup.GetPathOfConfigFile().Equals(string.Empty))
+<span id="currentField"></span>
+<div class="menu">
+
+    @*Si client_application.json présent*@
+    @if (ConfigFileOk)
     {
-        if (!User.Identity.IsAuthenticated)
+        //Si utilisateur pas encore authentifié
+        if (!UserConnected)
         {
-            <a class="button addspinner" href="Authentification/Login">Connexion</a>
+            //Si on vient de créer client_application.json alors on grise le bouton "Connecter" car il faut d'abord relancer l'app pour lire les identifiants
+            if (app.Settings.ApplicationSettings.ClientId == "default")
+            {
+                <a class="button disabled login" href="javascript:void(0)">Connexion</a>
+            }
+            else
+            {
+                <a class="button warning addspinner login" href="Authentification/Login">Connexion</a>
+            }
+        }
+
+        //Si utilisateur pas encore authentifié ou pas de société trouvée on met les onglets mais en disabled
+        if (!UserConnected || !companyFound)
+        {
+            <a class="button addspinner" href="/">Accueil</a>
+            <a class="button disabled">Requêtes</a>
+            <a class="button disabled">Clients</a>
+            <a class="button disabled">Import</a>
         }
         else
+        //Si utilisateur déjà authentifié et société trouvée
         {
-            <a class="button addspinner" href="Authentification/Logout">Déconnexion</a>
+            <a class="button addspinner" href="/">Accueil</a>
             if (!string.IsNullOrEmpty(app.Settings.ApplicationSettings.CompanyName))
             {
                 <a class="button addspinner" href="/Request">Requêtes</a>
@@ -22,14 +45,97 @@
                 <div class="companyname">@app.Settings.ApplicationSettings.CompanyName</div>
             }
         }
+        if (UserConnected)
+        {
+            <a class="button addspinner login" href="/Authentification/Logout">Déconnexion</a>
+        }
+
+    }
+    @*Si client_application.json était absent on propose un bouton Actualiser qui relance l'app pour prendre en compte le fichier s'il est maintenant présent*@
+    else
+    {
+        <a class="button addspinner" href="/?refresh=true">Actualiser</a>
     }
 
     <a class="button secondary" href="https://developer.sage.com/api/100/fr/saas/guides/samples/samplecharp/" target="_blank">Aide</a>
 </div>
 
+@*Objets et scripts dispos pour toutes les pages*@
 <div class="spinner">
     <img src="~/spinner.svg" />
 </div>
+
+<div class="contextError">
+    <span id="CONTEXTERROR" class="contextError"></span>
+</div>
+
+@*Info en bas à gauche du temps derniers appels APIS + Detail + Alerte en rouge si un des appels API >{alert} secondes*@
+@{
+    var lastAPIs = app.Settings.ApplicationSettings.LastAPIs;
+    var alert = 3;
+    int cpt = 0;
+    bool isAlert = false;
+    string isFirstAlertMessage = "";
+    double sumDuration = 0;
+    string detailLastAPIs = "", row = "";
+    if (lastAPIs != null)
+    {
+        foreach (var lastAPI in lastAPIs)
+        {
+            if (lastAPI.duration > alert)
+            {
+                if (lastAPIs.First() == lastAPI)
+                {
+                    if (lastAPI.uri.IndexOf("/companies?") == -1)
+                        isFirstAlertMessage = "Le temps de " + lastAPI.duration.ToString("#0.00") + " s du premier appel API provient probablement d'un redémarrage de l'environnement après inactivité de 10 mn";
+                    else
+                        isFirstAlertMessage = "Le temps de " + lastAPI.duration.ToString("#0.00") + " s correspond à la recherche des sociétés autorisée pour l'utilisateur courant";
+                }
+                isAlert = true;
+            }
+            sumDuration += lastAPI.duration;
+            cpt++;
+            row = (cpt % 2 == 0) ? " lastAPIsDetail-row" : "lastAPIsDetail-row-even";
+            detailLastAPIs += "<tr class=\"" + Html.Raw((lastAPI.duration > alert) ? "lastAPIsDetailAlert" : "") + " " + row + "\">" +
+                "<td class='lastAPIsDetail lastAPIsDetailTime'>" + lastAPI.duration.ToString("#0.00") + "&emsp;</td><td class=lastAPIsDetail>" + lastAPI.uri + "</td></tr>";
+        }
+        if (isFirstAlertMessage != "")
+        {
+            <script>
+                window.addEventListener("load", function () {
+                    affectContextError("@isFirstAlertMessage", null, true);
+                });
+            </script>
+        }
+    }
+}
+<div id="durationlastAPI" style="display:@Html.Raw((sumDuration==0)?"none":"block")" class="durationlastAPI @Html.Raw((isAlert)?"durationlastAPIAlert":"")">
+    Appels API de la page : <b>@sumDuration.ToString("#0.00") s</b>
+    <div class="lastAPIsDetail">
+        <table class="lastAPIsDetail">
+            <tbody>
+                @Html.Raw(detailLastAPIs)
+            </tbody>
+        </table>
+    </div>
+</div>
+
+<div id="dlgbox" class="dlgbox">
+    <div class="dlgbox1">
+        <h3 id="dlgboxTitle">Titre</h3>
+    </div>
+    <div class="dlgbox2">
+        <span id="dlgboxQuestion">Question</span>
+        <div class="dialog-buttons">
+            <a id="No" class="button secondary" onclick="dlgboxCancel();">Non</a>&emsp;
+            <a id="Yes" class="button">Oui</a>
+        </div>
+    </div>
+</div>
+
+<div id="modal-background"></div>
+
+
 <span class="BETA">BETA</span>
 
 <script src="~/scripts.js"></script>

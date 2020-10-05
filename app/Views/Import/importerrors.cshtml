@@ -1,0 +1,29 @@
+﻿
+    <ul class="importError">
+        @foreach (var error in ViewBag.errors)
+        {
+            if (error.Key != "STRUCTURE") continue;
+            <li class="importPiecesKo importError">
+                Erreur de Structure
+                <ul class="importError">
+                    @foreach (var errorLignes in error.Value)
+                    {
+                        <li> @errorLignes</li>
+                    }
+                </ul>
+            </li>
+        }
+        @foreach (var error in ViewBag.errors)
+        {
+            if (error.Key == "STRUCTURE") continue;
+            <li class="importPiecesKo importError">
+                Pièce : @error.Key
+                <ul class="importError">
+                    @foreach (var errorLignes in error.Value)
+                    {
+                        <li> @errorLignes</li>
+                    }
+                </ul>
+            </li>
+        }
+    </ul>

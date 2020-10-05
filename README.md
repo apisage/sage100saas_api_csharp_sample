@@ -1,13 +1,13 @@
-#Exemple C# pour l'Api Sage 100Saas
+#Exemple C# pour l'Api Sage Business Cloud
 
-Portail d'aide en ligne de [l'Api Sage 100Saas](https://developer.sage.com/api/100/fr/saas)
+Portail d'aide en ligne de [l'API Sage Business Cloud](https://developer.sage.com/api/100/fr/saas)
 
-Projet de l'exemple C# connecté à Sage 100Saas via l'API l'API Sage 100Saas.<br>
+Projet de l'exemple  C# .NET Core + JavaScript connecté à Sage Business Cloud  via l'API Sage Business Cloud.<br>
 Cette application utilise .NET Core 3.1 and [Newtonsoft Json.NET](https://github.com/JamesNK/Newtonsoft.Json).
 
 ## Installation
 
-Consultez [Projet d'application en C# . Net](https://developer.sage.com/api/100/fr/saas/guides/samples/samplecharp/)
+Consultez [Projet d'application en C# .NET Core + JavaScript](https://developer.sage.com/api/100/fr/saas/guides/samples/samplecharp/)
 
 ## Licence
 

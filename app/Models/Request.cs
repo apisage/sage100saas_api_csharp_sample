@@ -4,7 +4,12 @@ namespace app.Models
 {
     public class Request
     {
-        public string RespStatusCode { get; set; }
+        public int RespStatusCode { get; set; }
+        public string RespStatusMessage { get; set; }
+        public int RespCount { get; set; }
+
+        public bool changeResource { get; set; }
+
         public string RespBody { get; set; }
         [DisplayFormat(ConvertEmptyStringToNull = false)]
         public string Company { get; set; }
@@ -24,5 +29,9 @@ namespace app.Models
         public string Count { get; set; }
         [DisplayFormat(ConvertEmptyStringToNull = false)]
         public string Resource { get; set; }
+        [DisplayFormat(ConvertEmptyStringToNull = false)]
+        public string ResourceId { get; set; }
+        [DisplayFormat(ConvertEmptyStringToNull = false)]
+        public string Subresource { get; set; }
     }
 }

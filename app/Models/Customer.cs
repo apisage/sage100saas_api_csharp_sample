@@ -1,4 +1,6 @@
-﻿using System.ComponentModel.DataAnnotations;
+﻿using System;
+using System.Collections.Generic;
+using System.ComponentModel.DataAnnotations;
 using Newtonsoft.Json;
 
 namespace app.Models
@@ -54,5 +56,44 @@ namespace app.Models
         public Customer()
         {
         }
+
+        public Customer(Address address, Telecom telecom)
+        {
+            Adresse = address;
+            Telecom = telecom;
+        }
     }
+	
+	public class ColumnsListCustomer
+    {
+        public static ColumnsListCustomer Create(string Name, string Property = "", string Size = "15%", bool Sorting = false)
+        {
+            return new ColumnsListCustomer
+            {
+                Title = Name,
+                Property = Property,
+                Size = Size,
+                Sorting = Sorting
+           };
+        }
+
+        public static Dictionary<string, ColumnsListCustomer> LoadColumns()
+        {
+            Dictionary<string, ColumnsListCustomer> columns = new Dictionary<string, ColumnsListCustomer>
+            {
+                { "1", ColumnsListCustomer.Create("Numéro", "numero", "15%",true) },
+                { "2", ColumnsListCustomer.Create("Intitulé", "intitule","20%", true) },
+                { "3", ColumnsListCustomer.Create("Adresse","adresse/pays,adresse/ville", "40%",true)},
+                { "4", ColumnsListCustomer.Create("Téléphone",null,"14%") },
+                { "5", ColumnsListCustomer.Create("Solde",null,"10%") }
+            };
+            return columns;
+        }
+
+        public string Title { get; set; }
+        public string Property { get; set; }
+        public string Size { get; set; }
+        public bool Sorting { get; set; }
+    }
+
 }

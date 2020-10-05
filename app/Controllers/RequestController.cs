@@ -5,6 +5,10 @@ using app.Models;
 using app.Repositories;
 using Microsoft.AspNetCore.Authentication;
 using System.Net;
+using app.Settings;
+using Newtonsoft.Json;
+using Newtonsoft.Json.Linq;
+using System.Linq;
 
 namespace app.Controllers
 {
@@ -14,75 +18,54 @@ namespace app.Controllers
         /// Page d'accueil de Request.
         /// </summary>
         /// <param name="model"> Les données du formulaire si envoyé. </param>
-        /// <returns></returns>
+        /// <returns> La vue du formulaire. </returns>
+        [HttpGet("Request")]
         public IActionResult Index(Request model)
         {
-            // Chargement des sociétés dans la liste déroulante.
-            Dictionary<string, string> companyOptions = new Dictionary<string, string>
-            {
-                { "$select", "id,name" }
-            };
+            //Contrôle token et company et création d'un repository
+            var repository = APIRepository.Create(HttpContext.GetTokenAsync("access_token").Result, ApplicationSettings.CompanyId);
+            if (repository.ErrorCode == "TOKENEXPIRED") return RedirectToRoute(Tools.forceAuthentication);
+            if (repository.ErrorMessage != "") return View("Error", new Error(repository.ErrorMessage));
 
-            // Gestion du token.
-            string accessToken = HttpContext.GetTokenAsync("access_token").Result;
-            var repository = APIRepository.Create(accessToken);
+            return LoadCompaniesAndMetadata(repository,model);
+        }
 
-            if (string.IsNullOrEmpty(accessToken))
-            {
-                Error error = new Error(string.Empty, (int)HttpStatusCode.Unauthorized);
-                return View("Error", error);
-            }
+        [HttpPost("Request")]
+        public IActionResult ExecuteRequestOrChangeResource(Request model)
+        {
+            //Contrôle token et company et création d'un repository
+            var repository = APIRepository.Create(HttpContext.GetTokenAsync("access_token").Result, ApplicationSettings.CompanyId);
+            if (repository.ErrorCode == "TOKENEXPIRED") return RedirectToRoute(Tools.forceAuthentication);
+            if (repository.ErrorMessage != "") return View("Error", new Error(repository.ErrorMessage));
+            
+            ViewResult view= LoadCompaniesAndMetadata(repository, model);
 
-            // [API01] Récupération de la liste des sociétés.
-            var message = repository.Get(string.Empty, "companies", companyOptions);
+            if (!model.changeResource)
+                ExecuteRequest(repository, model);
+            
+            return view;
+        }
 
-            if (!Tools.IsSuccess(message))
-            {
-                var details = "Désolé ! Les sociétés n'ont pas pu être récupérées !";
-                Error error = new Error(details, (int)message.StatusCode);
+        /// <summary>
+        /// Récupère la liste des sociétés et les métadonnées
+        /// </summary>
+        /// <param name="repository">Le repository permettant d'accéder aux données de l'API.</param>
+        /// <param name="model">Les données du formulaire</param>
+        /// <returns></returns>
+        private ViewResult LoadCompaniesAndMetadata(APIRepository repository, Request model)
+        { 
+            var result = Tools.GetCompanies(repository);
+            if (!Tools.IsSuccess(result)) return View("Error", ApplicationSettings.ApiError);
 
-                return View("Error", error);
-            }
+            ViewBag.Companies = result.GetJSONResult()["value"];
+            if (ViewBag.Companies.Count == 0)
+                return View("Error", new Error(Resource.NOCOMPANIES));
 
-            var companies = Tools.GetJSONResult(message);
+            // Récupération des ressources et sous-ressources via les metadata.
+            Dictionary<string, List<string>> resources = Tools.GetMetadataResources(Tools.GetMetadata(repository));
+            ViewBag.Resources = resources;
 
-            if (companies.Count == 0)
-            {
-                return View(model);
-            }
-
-            ViewBag.Companies = companies["value"];
-
-            // Récupération de la première société de sorte à ne pas avoir un champ vide.
-            var firstCompanyId = companies["value"][0]["id"].ToString();
-
-            // [API02] Récupération des ressources d'une société.
-            message = repository.Get(firstCompanyId, null, null);
-
-            if (!Tools.IsSuccess(message))
-            {
-                var details = "Désolé ! Les ressources des sociétés disponibles n'ont pas pu être récupérées.";
-                Error error = new Error(details, (int)message.StatusCode);
-                return View("Error");
-            }
-
-            var resources = Tools.GetJSONResult(message);
-            List<string> endpoints = new List<string>();
-
-            foreach (var resource in resources["value"])
-            {
-                endpoints.Add(resource["url"].ToString());
-            }
-
-            ViewBag.Endpoints = endpoints;
-
-            // [API03] Envoi des données du formulaire.
-            if (model.Company != null)
-            {
-                DoRequest(repository, model);
-            }
-
-            return View(model);
+            return View("Index", model);
         }
 
         /// <summary>
@@ -90,7 +73,7 @@ namespace app.Controllers
         /// </summary>
         /// <param name="repository"> Le repository permettant d'accéder aux données de l'API. </param>
         /// <param name="model"> Les données du formulaire. </param>
-        private void DoRequest(APIRepository repository, Request model)
+        private void ExecuteRequest(APIRepository repository, Request model)
         {
             Dictionary<string, string> options = new Dictionary<string, string>();
             Dictionary<string, string> parameters = new Dictionary<string, string>
@@ -107,23 +90,24 @@ namespace app.Controllers
             foreach (var parameter in parameters)
             {
                 if (!string.IsNullOrEmpty(parameter.Value) && !string.IsNullOrWhiteSpace(parameter.Value))
-                {
-                    options.Add(parameter.Key, parameter.Value);
-                }
+                   options.Add(parameter.Key, parameter.Value);
             }
 
-            var message = repository.Get(model.Company, model.Resource, options);
+            var result = repository.Get(model.Company, model.Resource, options, model.ResourceId, model.Subresource); 
+            var data = Tools.GetJSONResult(result);
+ 
+            //Tout ce qui est en dessous sert uniquement à formater l'affichage de la réponse dans le formulaire.
+            model.RespStatusCode = (int)result.StatusCode;
+            model.RespStatusMessage = result.StatusCode.ToString();
 
-            if (!Tools.IsSuccess(message))
-            {
-                model.RespStatusCode = string.Concat((int)message.StatusCode, " - ", message.StatusCode.ToString());
-                model.RespBody = Tools.GetStringResult(message);
-                return;
-            }
+            if (data.HasValues)
+               model.RespCount = (data.ContainsKey("value")) ? data["value"].Count() : 1; 
+            else
+                model.RespCount = 0;
 
-            // Affichage des résultats.
-            model.RespBody = Tools.GetStringResult(message);
-            model.RespStatusCode = string.Concat((int)message.StatusCode, " - ", message.StatusCode.ToString());
+            dynamic parsedJson = JsonConvert.DeserializeObject(data.ToString());
+  
+            model.RespBody = JsonConvert.SerializeObject(parsedJson, Newtonsoft.Json.Formatting.Indented);
         }
     }
 }

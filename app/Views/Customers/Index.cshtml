@@ -1,27 +1,327 @@
-﻿@using Microsoft.AspNetCore.Http
+﻿@*****************************[STYLES SPECIFIQUES A CETTE PAGE]**********************************************************@
+<style>
+    .valueColumn {
+        white-space: nowrap;
+    }
+
+    .order {
+        cursor: pointer;
+    }
+
+        .order::after {
+            margin-left: 5px;
+            vertical-align: text-bottom;
+            font-family: fantasy;
+        }
+
+    .ordercurrent::after {
+        color: rgba(0, 0, 0, 0.85);
+    }
+
+    .orderasc::after {
+        content: "\2191";
+    }
+
+    .orderdesc::after {
+        content: "\2193";
+    }
+
+    .orderascdesc::after {
+        content: "\2195";
+        color: darkgray;
+    }
+
+    .soldeSpinner {
+        text-align: center;
+        display: inline-block;
+        width: 100%
+    }
+
+    .soldeValue {
+        text-align: right;
+        display: inline-block;
+        width: 100%
+    }
+
+    div.odatainfos {
+        position: absolute;
+        top: 50%;
+        padding: 20px;
+        background-color: #fff;
+        box-shadow: -3px 3px 10px rgba(0,0,0,.3);
+        left: 25%;
+        min-width: 500px;
+    }
+
+        div.odatainfos td {
+            border: 0px;
+            background-color: #fff;
+        }
+
+    .odatainfosValue {
+        color: rgba(0, 0, 0, 0.95)
+    }
+
+    #searchTerm {
+        max-width: 40%;
+        font-size: 26px;
+        color: rgba(0, 0, 0, 0.70);
+        height: 40px;
+    }
+
+    .nbresult {
+        display: inline-block;
+        padding: 10px;
+        background-color: rgba(0, 92, 154, 0.16);
+        height: 40px;
+        margin: 0px;
+        vertical-align: top;
+    }
+
+    .pagination {
+        margin-top: 30px;
+        text-align: left;
+    }
+</style>
+
+
+@using System.Text.RegularExpressions;
+@using Microsoft.AspNetCore.Html;
+@using System.Web;
 @model app.Models.Customer
-@inject Microsoft.AspNetCore.Http.IHttpContextAccessor HttpContextAccessor
-@{
-    ViewData["Title"] = "Clients";
-}
 
 <partial name="Guide" />
 
 <div class="main">
     <partial name="Menu" />
-    <form id="request" class="request" action="/Customers" method="post">
+    <form id="Customer" class="form" action="/Customers" method="post" spellcheck="false" autocomplete="off">
+        <input type="hidden" id="DefaultSorting" name="DefaultSorting" value="@ViewBag.DefaultSorting" />
+        <input type="hidden" id="SortingDesc" name="SortingDesc" value="@ViewBag.SortingDesc" />
+
+        @*****************************[ENTETE AVEC CHAMP DE RECHERCHE + BOUTON NOUVEAU CLIENT]**********************************************************@
         <div class="titlepage">
-            <h2>Consultation de clients</h2>
+            <h2>Consultation des clients</h2>
         </div>
         <div class="actionbutton">
-            <a id="afficherAjoutClient" href="/Customers/add" class="button secondary">Nouveau client</a>
+            <a id="afficherAjoutClient" href="/Customers/add" class="button secondary addspinner">Nouveau client</a>
         </div>
         <div class="field">
             <div class="field__body">
-                <input type="search" class="field__input" list="clients" placeholder="contient dans intitulé ou numéro" id="searchTerm" name="searchTerm" autocomplete="off" value="@ViewBag.SearchTerm" />
-                <button class="button">Exécuter la requête</button>
+                @* Champ de recherche avec appel fonction JavaScript pour voir si on doit exécuter le requête à chaque frappe de touche*@
+                <input type="search" class="field__input" id="searchTerm" name="searchTerm" value="@ViewBag.SearchTerm"
+                       onkeyup="FilterClient(this.value);"
+                       onsearch="FilterClient(this.value);"
+                       placeholder="contient dans intitulé ou compte de tiers" autocomplete="off" />
             </div>
         </div>
-        <partial name="Resp" />
+
+        @*****************************[BOUTONS DE NAVIGATION + LISTE DES RESULTATS]********************************************************************@
+        <table id="tabClients" name="tabClients" width="100%" class="response">
+
+            @*****************************[BOUTONS DE NAVIGATION]******************************************************************************************@
+            <caption class="pagination" align="bottom" id="caption">
+                @{
+                    var clients = ViewBag.Clients;
+                    var resultsByPage = ViewBag.ResultsByPage;
+                    var number = ViewBag.Results;
+                    var currentPage = (number > 0) ? ViewBag.CurrentPage / resultsByPage + 1 : 0;
+                    var noPages = (number > 0) ? (number - 1) / resultsByPage + 1 : 0;
+                }
+
+                @* Bouton première page et page précédente*@
+                <button class="square button @Html.Raw((currentPage<=1) ? "disabled" : "secondary")"
+                        disabled="@(currentPage<=1)"
+                        name="skip" value="0">
+                    &lt;&lt;
+                </button>
+                <button class="square button @Html.Raw((currentPage<=1) ? "disabled" : "secondary")"
+                        disabled="@(currentPage<=1)"
+                        name="skip" value="@Html.Raw((currentPage-2) * resultsByPage)">
+                    &lt;
+                </button>
+
+                @* On ajoute arbitrairement 8 boutons pour accéder directement au 8 premières pages en plus des boutons début/précédent/suivant/fin*@
+                @for (int page = 1; page <= 8; page++)
+                {
+                    <button class="square button @Html.Raw((page > noPages) ? "disabled" : ((page != currentPage)?"secondary":""))"
+                            disabled="@(page>noPages)"
+                            name="skip" value="@Html.Raw(((page-1) * resultsByPage).ToString())">
+                        @Html.Raw(page.ToString())
+                    </button>
+                }
+
+                @* Bouton page suivante et dernière page*@
+                <button class="square button @Html.Raw((currentPage==noPages) ? "disabled" : "secondary")"
+                        disabled="@(currentPage==noPages)"
+                        name="skip" value="@Html.Raw((currentPage) * resultsByPage)">
+                    &gt;
+                </button>
+                <button class="square button @Html.Raw((currentPage==noPages) ? "disabled" : "secondary")"
+                        disabled="@(currentPage==noPages)"
+                        name="skip" value="@Html.Raw((noPages-1) * resultsByPage)">
+                    &gt&gt;
+                </button>
+
+                @* Info N° page courante/ nb pages maxi et Nombre total clients résultat recherche*@
+                <div class="nbresult">
+                    @currentPage / @noPages
+                </div>
+                <div class="nbresult">
+                    @number clients
+                </div>
+
+                @* Boutons d'aide sur la requête exécutée et lien vers la documentation*@
+                <span class="button secondary" onclick="javascript:showHideOdata()">OData</span>
+                <a class="button secondary" href="https://developer.sage.com/api/100/fr/saas/concepts/odatapaginate/" target="targetconcept">Pagination</a>
+
+            </caption>
+
+            @*****************************[LISTE DES CLIENTS RESULTAT DE LA RECHERCHE]*************************************************************************@
+            @if (number > 0)
+            {
+                string orderClass, onclick, id;
+                <tr class="rowheader">
+                    @foreach (var column in ViewBag.Columns.Values)
+                    {
+                        orderClass = (column.Sorting) ? "order" + ((column.Property == ViewBag.DefaultSorting) ? " ordercurrent" + ((ViewBag.SortingDesc == "Y") ? " orderdesc" : " orderasc") : " orderascdesc") : "";
+                        onclick = (column.Sorting) ? "onclick=\"changeOrder(this);\"" : "";
+                        id = (column.Property != "") ? "id=\"" + column.Property + "\"" : "";
+                        <th width="@column.Size" @Html.Raw(id) class="@Html.Raw(orderClass)" @Html.Raw(onclick)>@column.Title</th>
+                    }
+                </tr>
+
+                string patternSearchTerm = (string.IsNullOrEmpty(ViewBag.SearchTerm)) ? null : "(?<searchTerm>" + ViewBag.SearchTerm + ")";
+                int cpt = 0;
+                string row = "", adresse = "";
+                HtmlString numero;
+                HtmlString intitule;
+                @foreach (var client in clients["value"])
+                {
+                    cpt++;
+                    row = (cpt % 2 == 0) ? "row" : "row-even";
+                    // On ajoute un fond de couleur partout où le numéro ou intitule contient le terme de recherche.
+                    numero = new HtmlString(HttpUtility.HtmlEncode(client["numero"]));
+                    intitule = new HtmlString(HttpUtility.HtmlEncode(client["intitule"]));
+                    if (patternSearchTerm != null)
+                    {
+                        numero = new HtmlString(Regex.Replace(numero.ToString(), patternSearchTerm, "<font class=tagSearch>${searchTerm}</font>", RegexOptions.IgnoreCase));
+                        intitule = new HtmlString(Regex.Replace(intitule.ToString(), patternSearchTerm, "<font class=tagSearch>${searchTerm}</font>", RegexOptions.IgnoreCase));
+                    }
+                    //Ligne d'un client
+                    if (ViewBag.DefaultSorting.IndexOf("adresse") == -1)
+                        adresse = client["adresse"]["adresse"] + " " + client["adresse"]["codePostal"] + " " + client["adresse"]["ville"] + ((client["adresse"]["pays"] != "" && client["adresse"]["pays"] != "France") ? " - " + client["adresse"]["pays"] : "");
+                    else
+                        adresse = client["adresse"]["pays"].ToString().ToUpper() + " - " + client["adresse"]["ville"].ToString().ToUpper() + " " + client["adresse"]["codePostal"] + " " + client["adresse"]["adresse"];
+
+                    <tr class="@row">
+                        <td class="valueColumn"><a class="addspinner" href="Customers/show/@client["id"]">@numero</a> </td>
+                        <td class="valueColumn">@intitule</td>
+                        <td class="valueColumn">@adresse</td>
+                        <td class="valueColumn">@client["telecom"]["telephone"]</td>
+                        <td class="valueColumn"><span id="@client["id"]" name="solde" class="soldeSpinner"><img src="~/spinner.svg" style="width:16px;margin-left:20px" /></span></td>
+                    </tr>
+                }
+                var emptyLines = 10 - cpt;
+                @for (var i = 0; i < emptyLines; i++)
+                {
+                    cpt++;
+                    row = (cpt % 2 == 0) ? "row" : "row-even";
+                    <tr class="@row">
+                        <td colspan="10">&nbsp;</td>
+                    </tr>
+                }
+            }
+        </table>
     </form>
+
+    @* pavé informatif avec les options de la requête courante *@
+    <div id="odatainfos" style="display:none" class="odatainfos">
+        <table>
+            @foreach (var option in ViewBag.Options)
+            {
+                <tr>
+                    <td><b>@option.Key</b></td>
+                    <td class="odatainfosValue">: @option.Value </td>
+                </tr>
+            }
+        </table>
+    </div>
 </div>
+
+@*****************************[SCRIPTS JAVASCRIPT EXECUTES PAR LE NAVIGATEUR]**********************************************************@
+<script type="text/javascript">
+    //Curseur à la fin du terme courant du champ de recherche lorsque la page est repostée
+    var search = document.getElementById("searchTerm");
+    search.selectionStart = search.selectionEnd = search.value.length;
+    tmpSearchTerm = document.getElementById("searchTerm").value;
+
+    var changeOrder = function (thObj) {
+        var oldSortingDesc = document.getElementById("DefaultSorting").value;
+        document.getElementById("SortingDesc").value = (thObj.className.indexOf("orderdesc") >= 0 || oldSortingDesc != thObj.id) ? "" : "Y";
+        document.getElementById("DefaultSorting").value = thObj.id;
+        spinner();
+        document.getElementById("Customer").submit();
+    }
+
+    //Appel automatique du filtre des clients selon la saisie du terme de recherche
+    //On gère un Timer pour éviter appel à chaque frappe de touche tant que l'utilisateur n'arrête pas de saisir
+    var FilterClient = function (searchTerm) {
+        if (searchTerm && searchTerm != searchTerm.trim()) {
+            document.getElementById("searchTerm").value = searchTerm.trim();
+        }
+        else if (!searchTerm) {
+            spinner();
+            document.getElementById("Customer").submit();
+        }
+        else if (searchTerm.length >= 2 && (typeof tmpSearchTerm == "undefined" || searchTerm != tmpSearchTerm)) {
+            spinner();
+            if (typeof FilterClientTime != "undefined") clearTimeout(FilterClientTime);
+            FilterClientTime = setTimeout(function () { document.getElementById("Customer").submit() }, 300);
+        }
+    }
+
+    //Calcul asynchrone du solde comptable de chaque client, asynchrone pour ne pas ralentir l'affichage de la liste
+    // calculSolde(nb soldes), <nb soldes> peut être augmenté pour renvoyer plusieurs soldes à chaque appel au lieu de 1 appel asynchrone par client.
+    function calculSolde(lot, clientsArray, ajax, uri) {
+        //Initialisation
+        if (!ajax) {
+            if (!lot) lot = 1;
+            var clientsArray = [];
+            var tmp = document.querySelectorAll("[name=solde]");
+            for (var i = 0; i < tmp.length; i++)
+                clientsArray.push(encodeURIComponent(tmp[i].id));
+
+            var ajax = new XMLHttpRequest();
+            var uri = "/Customers/AjaxCalculSolde";
+
+            //Traitement de la réponse ajax et rappel récursif de calculSolde jusqu'à la fin.
+            ajax.onreadystatechange = function () {
+                if (ajax.readyState == 4 && ajax.status == 200) {
+                    if (ajax.response && ajax.response.substr(0, 6) == "ERROR:") {
+                        affectContextError(ajax.response.substr(6));
+                        return;
+                    }
+                    var linesResult = ajax.response.split("|");
+                    for (var i = 0; i < linesResult.length; i++) {
+                        result = linesResult[i].split("~");
+                        soldeObj = document.getElementById(result[0]);
+                        soldeObj.innerHTML = result[1];
+                        soldeObj.className = "soldeValue";
+                    }
+                    calculSolde(lot, clientsArray, ajax, uri);
+                }
+            }
+        }
+
+        //Autant de fois que de clients dans la liste divisés par valeur de lot (Si 10 clients, si lot=1 -> 10 appels, si lot=5 -> 2 appels, etc.)
+        //Attention calculSolde se rappelle lui même pour enchaîner des appels Ajax asynchrones
+        if (!clientsArray.length) return;
+        var lotClients = clientsArray.slice(0, lot).join("&");
+        clientsArray.splice(0, lot);
+        ajax.open('POST', uri, true);
+        ajax.setRequestHeader("Content-type", "application/x-www-form-urlencoded");
+        ajax.send(lotClients);
+    }
+    calculSolde(1);
+
+</script>

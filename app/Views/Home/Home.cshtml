@@ -1,42 +1,105 @@
-﻿@using Microsoft.AspNetCore.Http
-<div class="request">
+﻿@*****************************[STYLES SPECIFIQUES A CETTE PAGE]**********************************************************@
+<style>
+    .loadCompanies {
+        position: absolute;
+        z-index: 99999;
+        margin: auto;
+        top: 0px;
+        bottom: 200px;
+        left: 0;
+        right: 0;
+        width: 400px;
+        height: 100px;
+        text-align: center;
+        font-size: xx-large;
+    }
 
-    @if (Startup.GetPathOfConfigFile().Equals(""))
+    SELECT.selectCompanies, INPUT.selectCompanies {
+        border: 1px solid #668592;
+        background: #fff;
+        padding: 4px;
+        width: 250px;
+        font-size: 16px;
+        text-overflow: ellipsis;
+        line-height: inherit;
+        position: relative;
+        overflow: hidden;
+        flex: 1 1;
+        border-radius: 0;
+        resize: vertical;
+    }
+
+
+    td.selectCompaniesTitle {
+        width: 135px;
+    }
+
+</style>
+
+@using Microsoft.AspNetCore.Http
+@using System.IO;
+
+
+<script>affectContextError("@ViewBag.codeMessage")</script>
+
+
+<div class="form">
+    @{
+        string urlSite = @Context.Request.Scheme + "://" + Context.Request.Host;
+        bool ConfigFileKo = Startup.GetPathOfConfigFile().Equals(string.Empty);
+    }
+
+    @*****************************[CONTEXTE CLIENT_APPLICATION.JSON ABSENT]*******************************************************************
+        Le fichier client_application.json n'est pas encore configuré, on explique ce qu'il faut faire*@
+    @if (ConfigFileKo)
     {
-      <div class="titlepage">
-           <h2>Le fichier client_application.json n'a pas été trouvé</h2>
-      </div>
+        bool Refresh = Convert.ToBoolean(@Context.Request.Query["refresh"]);
+        /* Si on a cliqué sur le bouton actualiser et que le fichier client_application.json n'est toujours pas présent, message avertissement*/
+        if (Refresh)
+        {
+            <p class="field__error">
+                Le fichier <code>client_application.json</code> n'est toujours pas présent dans <code>@Directory.GetCurrentDirectory()</code>
+            </p>
+        }
+
+        <div class="titlepage">
+            <h2>Le fichier client_application.json n'a pas été trouvé</h2>
+        </div>
         <p>
-            Avant d'utiliser cet exemple vous devez définir un fichier de configuration qui contiendra notamment des informations d'enregistrement de l'application.
+            Avant d'utiliser cet exemple vous devez créer une application via <b>Sage Application Registry</b> puis qualifier un <b>fichier de configuration</b> notamment en mentionnant les identifiants générés lors de la création de l'application.
         </p>
         <p>
             Suivez les étapes suivantes pour que l'exemple puisse être utilisé :
             <ul>
                 <li class="step">
-                    Dupliquez le fichier <span class="pre"><b>app/client_application.template.json</b></span> et renommez-le en
-                    <span class="pre"><b>app/client_application.json</b></span>.
+                    Dupliquez le fichier <b>app/client_application.template.json</b> et renommez-le en <b>app/client_application.json</b>.
                 </li>
                 <li class="step">
-                    Si vous n'avez pas encore créé une application via <b>Sage Application Registry</b> et n'avez donc pas encore vos identifiants, rendez-vous sur
-                    <a href="https://developer.sage.com/api/100/fr/saas/quickstart/appregistrybeta/" target="_blank">App Registry</a>
+                    Si vous n'avez pas encore créé une application via <b>Sage Application Registry</b> et n'avez donc pas encore vos identifiants <b>client_id</b> et <b>client_secret</b>, rendez-vous sur
+                    <a href="https://developer.sage.com/api/100/fr/saas/quickstart/appregistrybeta/" target="_blank">Sage Application Registry</a>
                     et créez votre compte ou connectez-vous.
                 </li>
                 <li class="step">
-                    Créez une nouvelle app dans App Registry puis copiez/collez les valeurs de <b>Client ID</b> et <b>Client Secret</b> de l'app dans les champs <b>client_id</b> et <b>client_secret</b> du fichier
-                    <span class="pre"><b>client_application.json</b></span>.
+                    Créez une nouvelle app dans <b>Sage Application Registry</b> avec les paramètres suivants :
+                    <ul>
+                        <li><span style="width:100px;display:inline-block"><b>Type client</b></span> : <code>Web Application</code></li>
+                        <li><span style="width:100px;display:inline-block"><b>Callback URL</b></span> : <code>@urlSite/auth/callback</code></li>
+                        <li><span style="width:100px;display:inline-block"><b>Logout URL</b></span> : <code>@urlSite</code></li>
+                        <li><span style="width:100px;display:inline-block"><b>Add API</b></span> : <code>Sage 100 Saas</code></li>
+                    </ul>
+                    et cliquez sur <b>Save</b> pour générer les identifiants.
                 </li>
                 <li class="step">
-                    Uniquement si l'url d'exécution de cet exemple n'est pas http://localhost:8080, modifiez le nom de domaine et le port dans le paramètre <b>callback_url</b>, mentionnez la même valeur dans le paramètre <b>callback URL</b>
-                    de votre app dans Sage App Registry.
+                    Copiez / collez les valeurs des identifiants générés <b>Client ID </b> et <b> Client Secret </b> dans les champs <b>client_id</b> et <b>client_secret</b> du fichier <b>client_application.json</b>.
                 </li>
                 <li class="step">
-                    Renseignez la valeur de <b>company_name</b> par le nom de votre société de test en respectant la casse en minuscules.<br />
+                    Renseignez la valeur de <b>company_name</b> du fichier <b>client_application.json</b> avec le nom de votre société de test en respectant la casse en minuscules.<br />
                     Exemple : <b>bijou</b>
                 </li>
                 <li class="step">
-                    Cliquez sur le bouton <b>Accueil</b> en haut de l'écran.<br />
-                    Si le fichier <b>app/client_application.json</b> est présent, un bouton <b>Connexion</b> sera proposé.<br />
-                    Si vos informations mentionnées autorisent l'accès, les fonctionnalités seront alors disponibles.
+                    Cliquez sur le bouton <b>Actualiser</b> en haut de l'écran.<br />
+                    Si le fichier<b> app/client_application.json</b> est présent, un bouton <b>Connexion</b> sera proposé.<br />
+                    Vous devrez alors quitter l'application puis la relancer pour prendre en compte les identifiants renseignés.
                 </li>
             </ul>
         </p>
@@ -44,64 +107,140 @@
             Cliquez sur le bouton <b>Aide</b> pour accéder aux explications de cette application depuis le portail de l'API.
         </p>
     }
+    @*****************************[CONTEXTE NON CONNECTE]*******************************************************************
+        Le fichier client_application.json est présent et on ne s'est pas encore connecté*@
     else if (!User.Identity.IsAuthenticated)
     {
-    <div class="titlepage">
-        <h2>Bienvenue dans cet exemple</h2>
-    </div>
-       <blockquote>
-        <p>
-            Cette application est proposée à titre d'exemple pour vous aider à utiliser l'API et met en avant quatre concepts :
-            <ol class="steps">
-                <li class="step"> <b>Authentification</b> : La gestion de l'authentification Oauth2 pour obtenir un token d'accès à l'API.</li>
-                <li class="step"> <b>Requêtes</b> : Une interface afin de vous initier à l'écriture des requêtes OData pour interroger l'API.</li>
-                <li class="step"> <b>Pagination</b> :  Recherche, liste avec pagination, consultation, modification, création de tiers clients.</li>
-                <li class="step"> <b>Import</b> : Un exemple d'import d'un fichier d'écritures de vente.</li>
-            </ol>
-        </p>
-        <br>
-        <p>
-            Vous devez au préalable cliquer sur le bouton <b>Connexion</b> puis vous authentifier.
-        </p>
-        <p>
-            Après vérification des droits, des onglets <b>Requêtes</b>, <b>Clients</b>, <b>Import</b> apparaitront et le bouton <b>Connexion</b> sera remplacé par un bouton <b>Déconnexion</b>.
-        </p>
-        <p>
-            Cliquez sur le bouton <b>Aide</b> pour accéder aux explications de cette application depuis le portail de l'API.
-        </p>
-      </blockquote>
+        /* Si on après avoir qualifié client_application.json on n'a pas relancé l'app on avertit*/
+        if (app.Settings.ApplicationSettings.ClientId == "default")
+        {
+            <p class="field__error">
+                Dernière étape de la configuration :<br /><br />
+                Avant de pouvoir vous connecter, vous devez préalablement fermer puis relancer cette application pour que les valeurs qualifiées dans <code>client_application.json</code> soient prises en compte.
+            </p>
+        }
+        <div class="titlepage">
+            <h2>Bienvenue dans cet exemple</h2>
+        </div>
+        <span class="fieldBloc" style="display:inline-block;width:100%">Présentation</span>
+
+        <blockquote>
+            <p>
+                Cette application est proposée à titre d'exemple pour vous aider à utiliser l'API et met en avant quatre concepts principaux :
+                <ol class="steps">
+                    <li class="step"> <b>Authentification</b><br />Via les boutons <b>Connexion</b> / <b>Déconnexion</b>, la gestion de l'authentification Oauth2 pour obtenir un token d'accès à l'API.</li>
+                    <li class="step"> <b>Odata et API</b><br />Via l'onglet <b>Requête</b>, une interface afin de vous initier à l'écriture des requêtes OData pour interroger l'API.</li>
+                    <li class="step"> <b>Pagination</b><br />Via l'onglet <b>Clients</b>, recherche, liste avec pagination, consultation, modification, création de tiers clients, lecture asynchrone des soldes comptables.</li>
+                    <li class="step"> <b>Ouverture</b><br />Via l'onglet <b>Import</b>, un exemple d'import de fichiers texte d'écritures comptables.</li>
+                </ol>
+            </p>
+        </blockquote>
+        <span class="fieldBloc" style="display:inline-block;width:100%">Instructions</span>
+        <blockquote>
+            <p>
+                Vous devez au préalable cliquer sur le bouton <b>Connexion</b> puis vous authentifier.
+            </p>
+            <p>
+                Après vérification des droits, les onglets <b>Requêtes</b>, <b>Clients</b>, <b>Import</b> seront accessibles et le bouton <b>Connexion</b> sera remplacé par un bouton <b>Déconnexion</b>.
+            </p>
+            <p>
+                Cliquez sur le bouton <b>Aide</b> pour accéder aux explications de cette application depuis le portail de l'API.
+            </p>
+        </blockquote>
     }
-    else if (!String.IsNullOrEmpty(ViewBag.ErrorMessage))
+    @*****************************[CONTEXTE CONNECTE MAIS ON N'A PAS ENCORE CHARGE LA LISTE DES SOCIETES]
+        On provoque réappel de la même page mais avec le flag lodCompanies à true pour afficher un spinner d'attente sinon on a un écran blanc le temps que la liste des sociétés soit trouvée*@
+    else if (ViewBag.Companies == null)
+    {
+        <div class="loadCompanies">Contrôle des autorisations d'accès aux sociétés</div>
+        <script>spinner(); setTimeout(function () { location.href = location.href + "?loadCompanies=true" }, 100);</script>
+    }
+
+    @*****************************[CONTEXTE CONNECTE MAIS AUCUNE SOCIETE]*******************************************************************
+        On est connecté mais la société n'est pas trouvée.*@
+    else if (!string.IsNullOrEmpty(ViewBag.ErrorMessage))
     {
         <p class="field__error">
             <b>Erreur d'accès à la société mentionnée dans le fichier client_application.json</b><br /><br />
             @ViewBag.ErrorMessage
         </p>
     }
+    @*****************************[CONTEXTE CONNECTE ET SOCIETES DISPONIBLES]*******************************************************************
+        On est connecté et la société est bien trouvée*@
     else
     {
-      <div class="titlepage">
-          <h2>L'application est actuellement connectée à la société : <b>@Context.Session.GetString("companyName")</b></h2>
-      </div>
+        <form id="form" action="/Home/changecompany" method="post" spellcheck="false" autocomplete="off">
+            <input type="hidden" id="companyid" name="companyid" />
+            <input type="hidden" id="companyname" name="companyname" />
 
-      <blockquote>
-        <p>
-            Cliquez sur les onglets suivants pour découvrir les trois exemples :
-            <ol class="steps">
-                <li class="step"> <b>Requêtes</b> : Une interface afin de vous initier à l'écriture des requêtes OData pour interroger l'API.</li>
-                <li class="step"> <b>Clients</b> :  Recherche, liste avec pagination, consultation, modification, création de tiers clients.</li>
-                <li class="step"> <b>Import</b> : Un exemple d'import d'un fichier d'écritures de vente.</li>
-            </ol>
-        </p>
-        <br>
+            <div class="titlepage">
+                <h2>L'application est actuellement connectée à la société : <b> @app.Settings.ApplicationSettings.CompanyName</b></h2>
+            </div>
+            <div class="field_header">
+                <span class="fieldBloc" style="display:inline-block;width:100%">Choix Société</span>
+                <blockquote>
+                    <table>
+                        <tr>
+                            <td style="padding-right:5px">Changer de société</td>
+                            <td>
+                                @if (ViewBag.Companies.Count > 1)
+                                {
+                                    <select class="selectCompanies nofocus" id="companies" name="companies" onchange="changeCompany();">
+                                        @foreach (var companies in ViewBag.Companies)
+                                        {
+                                            <option selected="@(app.Settings.ApplicationSettings.CompanyId == (String)companies.id)" value="@companies.id">@companies.name</option>
+                                        }
+                                     </select>
 
-        <p>
-            Cliquez sur le bouton <b>Déconnexion</b> pour révoquer le token d'authentification et vous déconnecter ainsi de l'API.
-        </p>
-        <p>
-            Cliquez sur le bouton <b>Aide</b> pour accéder aux explications de cette application depuis le portail de l'API.
-        </p>
-    </blockquote>
+                                }
+                                else
+                                {
+                                   <input class="selectCompanies field__input" value="@ViewBag.Companies[0].name" readonly="readonly" />
+                                }
+                            </td>
+                            <td style="width:5%"></td>
+                            <td colspan="2">
+                                <input class="nofocus" type="checkbox" id="clearcache" name="clearcache" onchange="changeCompany();">
+                                <label for="clearcache">Réactualiser la liste des sociétés</label>
+                            </td>
+                        </tr>
+                    </table>
+                </blockquote>
+
+                <span class="fieldBloc" style="display:inline-block;width:100%">Informations</span>
+                <blockquote>
+                    <p>
+                        Cliquez sur les onglets suivants pour découvrir les trois exemples :
+                        <ol class="steps">
+                            <li class="step"> <b>Requêtes</b> : Une interface afin de vous initier à l'écriture des requêtes OData pour interroger l'API.</li>
+                            <li class="step"> <b>Clients</b> :  Recherche, liste avec pagination, consultation, modification, création de tiers clients.</li>
+                            <li class="step"> <b>Import</b> : Un exemple d'import d'un fichier d'écritures de vente.</li>
+                        </ol>
+                    </p>
+                    <br>
+
+                    <p>
+                        Cliquez sur le bouton <b>Déconnexion</b> pour révoquer le token d'authentification et vous déconnecter ainsi de l'API.
+                    </p>
+                    <p>
+                        Cliquez sur le bouton <b>Aide</b> pour accéder aux explications de cette application depuis le portail de l'API.
+                    </p>
+                </blockquote>
+            </div>
+        </form>
     }
-
 </div>
+
+@*****************************[SCRIPTS JAVASCRIPT EXECUTES PAR LE NAVIGATEUR]**********************************************************@
+<script type="text/javascript">
+    var changeCompany = function () {
+        var listCompanies = document.getElementById("companies");
+        if (listCompanies) {
+            document.getElementById("companyid").value = listCompanies.item(listCompanies.selectedIndex).value;
+            document.getElementById("companyname").value = listCompanies.item(listCompanies.selectedIndex).innerText;
+        }
+        document.getElementById("form").submit();
+        spinner();
+    }
+</script>
+

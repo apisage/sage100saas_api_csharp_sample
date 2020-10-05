@@ -1,49 +1,97 @@
-﻿@inject Microsoft.AspNetCore.Http.IHttpContextAccessor HttpContextAccessor
-@{
-    ViewData["Title"] = "Guide";
-}
+﻿@*****************************[STYLES SPECIFIQUES A CETTE PAGE]**********************************************************@
+<style>
+    .title {
+        color: rgba(0, 0, 0, 0.9);
+        font-weight: bold;
+        line-height: 30px;
+        margin: 0 0 24px;
+        font-size: 20px;
+        text-align:center;
+    }
+
+    .titleend {
+        color: rgba(0, 0, 0, 0.9);
+        font-weight: bold;
+        font-size: 20px;
+        text-align: center;
+    }
+
+    .step__title {
+        font-size: inherit;
+        font-weight: 600;
+        margin: 0 0 4px;
+    }
+
+    .step__body {
+        color: rgba(0, 0, 0, 0.55);
+    }
+
+    .guide {
+        background: #fff;
+        max-width: 432px;
+        min-width: 320px;
+        overflow: auto;
+        padding: 40px;
+        flex-basis: 432px;
+    }
+
+        .guide:target {
+            display: block;
+        }
+
+        .guide::before {
+            background-image: url(/sage-developers.png);
+            background-position-x: 50%;
+            background-position-y: 0px;
+            background-size: contain;
+            background-repeat: no-repeat;
+            padding: 0 0 calc((479 / 864) * (100% + 35px));
+            display: block;
+            content: "";
+        }
+</style>
+
 <div id="guide" class="guide">
-    <h1 class="title">Démarrage rapide @app.Settings.ApplicationSettings.CompanyName </h1>
+    <h1 class="title">Exemple @Resource.NAMEAPI</h1>
     <ol class="steps">
         <li class="step">
             <h2 class="step__title">
-                <a href="https://developer.sage.com/api/100/fr/saas/quickstart/cloud-id/" target="_blank">Créez votre compte développeur Sage</a>
-            </h2>
-        </li>
-        <li class="step">
-            <h2 class="step__title">
-                <a href="https://developer.sage.com/api/100/fr/saas/quickstart/create-an-app/" target="_blank">Créez une application client</a>
+                <a href="https://developer.sage.com/api/100/fr/saas" target="_blank">Découvrez le portail développeur</a>
             </h2>
             <div class="step__body">
-                En mentionnant cette URL de redirection :<br />
-                <code>http://localhost:8080/auth/callback</code>
+                <ul>
+                    <li><a href="https://developer.sage.com/api/100/fr/saas/guides/appregistry/" target="_blank">Apprenez à obtenir vos identifiants</a></li>
+                    <li><a href="https://developer.sage.com/api/100/fr/saas/ressources/" target="_blank">Retrouvez les ressources de l'API</a></li>
+                    <li><a href="https://developer.sage.com/api/100/fr/saas/guides/" target="_blank">Parcourez les tutos et exemples</a></li>
+                </ul>
             </div>
         </li>
         <li class="step">
             <h2 class="step__title">
-                Collez le Client Id et le Secret obtenus dans:
+                <a href="https://developer.sage.com/api/100/fr/saas/guides/samples/samplecharp/" target="_blank">Consultez la documentation de l'exemple</a>
             </h2>
             <div class="step__body">
-                <code>app/client_application.json</code>
+                <ul>
+                    <li><a href="https://developer.sage.com/api/100/fr/saas/guides/samples/samplecharp/" target="_blank">Description</a></li>
+                    <li><a href="https://www.youtube.com/embed/pzdPCovj1ns?autoplay=1" target="_blank">Vidéo de présentation</a></li>
+                    <li><a href="https://developer.sage.com/api/100/fr/saas/guides/samples/samplecharp/samplecharp_doctech/" target="_blank">Explication du code source</a></li>
+                    <li><a href="https://developer.sage.com/api/100/fr/saas/guides/samples/samplecharp/samplecharp_install/" target="_blank">Informations sur l'installation</a></li>
+                </ul>
             </div>
         </li>
         <li class="step">
             <h2 class="step__title">
-                Qualifiez le nom de la société dans :
+                <a href="https://developer.sage.com/api/100/fr/saas/faq" target="_blank">Consultez la FAQ</a>
             </h2>
             <div class="step__body">
-                <code>app/client_application.json</code>
+                <ul>
+                    <li><a href="https://developer.sage.com/api/100/fr/saas/faq/faq-samples/" target="_blank">FAQ Exemples</a></li>
+                    <li><a href="https://developer.sage.com/api/100/fr/saas/faq/faq-help/" target="_blank">FAQ Aide et Support</a></li>
+                </ul>
             </div>
-        </li>
-        <li class="step">
-            <h2 class="step__title">
-                Cliquez sur le bouton Accueil<br />
-            </h2>
-        </li>
-        <li class="step">
-            <h2 class="step__title">
-                Cliquez sur le bouton Connexion
-            </h2>
         </li>
     </ol>
+    <h3 class="titleend">
+        Bonne découverte de <br />l'@Resource.NAMEAPI
+    </h3>
 </div>

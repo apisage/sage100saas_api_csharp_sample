@@ -1,0 +1,24 @@
+﻿
+<a id="showImportPiecesOk" class="button secondary showImportPiecesOk" onclick="showImportPiecesOk()">Voir toutes les pièces</a>
+<div id="importPiecesOk" class="importPiecesOk" style="display:none">
+    <ul class="importPiecesOk">
+        @foreach (var piece in ViewBag.pieces) 
+        { 
+            <li class="@Html.Raw((ViewBag.errors.ContainsKey(piece.Key))?"importPiecesKo":"importPiecesOk")">
+                Pièce : @piece.Key
+                <table class="importDetailPieces">
+                    @foreach (var line in piece.Value)
+                    {
+                        <tr>
+                            <td width="30%">@line.Intitule</td>
+                            <td width="10%">@line.Compte</td>
+                            <td width="10%">@line.NumeroTiers</td>
+                            <td width="10%" class="importDetailPiecesRight">@line.Debit.ToString("F2")</td>
+                            <td width="10%" class="importDetailPiecesRight">@line.Credit.ToString("F2")</td>
+                        </tr>
+                    }
+                </table>
+            </li>
+        }
+    </ul>
+</div>

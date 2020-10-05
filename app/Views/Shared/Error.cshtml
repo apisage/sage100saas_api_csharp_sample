@@ -1,16 +1,19 @@
 @model app.Models.Error
-@inject Microsoft.AspNetCore.Http.IHttpContextAccessor HttpContextAccessor
-@{
-    ViewData["Title"] = "Error";
-}
+
 <partial name="Guide" />
 
 <div class="main">
     <partial name="Menu" />
-    <div class="request">
+    <div class="form">
         <div class="titlepage">
-            <h2> Erreur @Model.StatusCode </h2>
-            Votre demande n'a pas pu aboutir, la page attendue est indisponible.
+            <h2>Erreur</h2>
+        </div>
+        <div class="errorMessage">
+            @if (Model.StatusCode != 0)@Html.Raw(Model.StatusCode)
+            @if (!string.IsNullOrEmpty(Model.Message))
+                @Html.Raw(Model.Message)
+            else
+                @Html.Raw("Votre demande n'a pas pu aboutir, la page attendue est indisponible.")
         </div>
     </div>
 </div>
