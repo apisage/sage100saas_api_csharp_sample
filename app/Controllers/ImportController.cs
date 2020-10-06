@@ -235,25 +235,26 @@ namespace app.Controllers
                     }
                 }
 
-                if (1 == 0)
+                //Ancienne méthode ligne à ligne, ne pas utiliser sauf raison précise car ne respecte pas toutes les règles métier dont le contrôle équilibre pièces
+                /*
+                foreach (var line in piece.Value)
                 {
-                    foreach (var line in piece.Value)
-                    {
-                        //Si journal avec option Centralisation et ligne du compte de centralisation on ignore car ajouté automatiquement par l'Api.
+                    //Si journal avec option Centralisation et ligne du compte de centralisation on ignore car ajouté automatiquement par l'Api.
             
-                        if (existing.Codes[line.Code].OptContrepartie == "Centralise" && existing.Codes[line.Code].Compte == line.Compte)
-                            continue;
+                    if (existing.Codes[line.Code].OptContrepartie == "Centralise" && existing.Codes[line.Code].Compte == line.Compte)
+                        continue;
 
-                        SetOdataBindings(repository, line, existing);
-                        data = JsonConvert.SerializeObject(line).Replace("@odata.bind\":null", "\":null");
-                        var result = repository.Post(repository.CompanyId, "ecritures", data);
-                        if (!result.IsSuccessStatusCode)
-                        {
-                            ViewBag.ErrorMessage = Tools.FormateErrorApi(result);
-                            break;
-                        }
+                    SetOdataBindings(repository, line, existing);
+                    data = JsonConvert.SerializeObject(line).Replace("@odata.bind\":null", "\":null");
+                    var result = repository.Post(repository.CompanyId, "ecritures", data);
+                    if (!result.IsSuccessStatusCode)
+                    {
+                        ViewBag.ErrorMessage = Tools.FormateErrorApi(result);
+                        break;
                     }
                 }
+                */
+                
             }
         }
 

@@ -72,29 +72,30 @@
             Suivez les étapes suivantes pour que l'exemple puisse être utilisé :
             <ul>
                 <li class="step">
-                    Dupliquez le fichier <b>app/client_application.template.json</b> et renommez-le en <b>app/client_application.json</b>.
+                    Dupliquez le fichier <b>app/client_application.template.json</b> et renommez la copie en <b>app/client_application.json</b>.
                 </li>
                 <li class="step">
-                    Si vous n'avez pas encore créé une application via <b>Sage Application Registry</b> et n'avez donc pas encore vos identifiants <b>client_id</b> et <b>client_secret</b>, rendez-vous sur
-                    <a href="https://developer.sage.com/api/100/fr/saas/quickstart/appregistrybeta/" target="_blank">Sage Application Registry</a>
-                    et créez votre compte ou connectez-vous.
-                </li>
-                <li class="step">
-                    Créez une nouvelle app dans <b>Sage Application Registry</b> avec les paramètres suivants :
+                    Si vous n'avez pas encore créé une application via <b>Sage Application Registry</b> et si n'avez donc pas encore vos identifiants <b>Client ID</b> et <b>Client Secret</b> :
+                    rendez-vous sur
+                    <a href="https://developer.sage.com/api/100/fr/saas/quickstart/appregistrybeta/" target="_blank">Sage Application Registry</a> :
                     <ul>
-                        <li><span style="width:100px;display:inline-block"><b>Type client</b></span> : <code>Web Application</code></li>
-                        <li><span style="width:100px;display:inline-block"><b>Callback URL</b></span> : <code>@urlSite/auth/callback</code></li>
-                        <li><span style="width:100px;display:inline-block"><b>Logout URL</b></span> : <code>@urlSite</code></li>
-                        <li><span style="width:100px;display:inline-block"><b>Add API</b></span> : <code>Sage 100 Saas</code></li>
+                        <li>Créez votre compte ou connectez-vous.</li>                    
+                        <li>
+                            Créez ensuite une nouvelle app dans <b>Sage Application Registry</b> avec les paramètres suivants :
+                            <ul>
+                                <li><span style="width:100px;display:inline-block"><b>Type client</b></span> : <code>Web Application</code></li>
+                                <li><span style="width:100px;display:inline-block"><b>Callback URL</b></span> : <code>@urlSite/auth/callback</code></li>
+                                <li><span style="width:100px;display:inline-block"><b>Logout URL</b></span> : <code>@urlSite</code></li>
+                                <li><span style="width:100px;display:inline-block"><b>Add API</b></span> : <code>Sage 100 Saas</code></li>
+                            </ul>
+                        </li>
+                        <li>
+                            Cliquez sur <b>Save</b> pour générer les identifiants.
+                        </li>
                     </ul>
-                    et cliquez sur <b>Save</b> pour générer les identifiants.
                 </li>
                 <li class="step">
-                    Copiez / collez les valeurs des identifiants générés <b>Client ID </b> et <b> Client Secret </b> dans les champs <b>client_id</b> et <b>client_secret</b> du fichier <b>client_application.json</b>.
-                </li>
-                <li class="step">
-                    Renseignez la valeur de <b>company_name</b> du fichier <b>client_application.json</b> avec le nom de votre société de test en respectant la casse en minuscules.<br />
-                    Exemple : <b>bijou</b>
+                    Copiez / collez les valeurs des identifiants générés <b>Client ID</b> et <b>Client Secret</b> dans les champs <b>client_id</b> et <b>client_secret</b> du fichier <b>client_application.json</b>.
                 </li>
                 <li class="step">
                     Cliquez sur le bouton <b>Actualiser</b> en haut de l'écran.<br />
