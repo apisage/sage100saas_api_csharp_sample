@@ -31,7 +31,7 @@ namespace app.Controllers
                     var companies = result.GetJSONResult()["value"];
                     ViewBag.Companies = companies;
                     if (ViewBag.Companies.Count == 0)
-                        return View("Error", new Error(Resource.NOCOMPANIES));
+                        return View("Index");
 
                     if (string.IsNullOrEmpty(ApplicationSettings.CompanyId))
                     {

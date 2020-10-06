@@ -1,5 +1,0 @@
-language: csharp
-mono: none
-script:
- - ./script/setup.sh
- - ./script/build.sh

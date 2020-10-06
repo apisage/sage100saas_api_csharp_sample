@@ -59,15 +59,15 @@
         float: right;
     }
 
-        span.responseInfo::after {
-            background-color: rgb(0,115,194);
-            padding: 0px 5px 0px 5px;
-            margin: -1px 0px 2px 10px;
-            color: #fff;
-            border-radius: 19px;
-            float: right;
-            cursor: pointer;
-        }
+    span.responseInfo::after {
+        background-color: rgb(0,115,194);
+        padding: 0px 5px 0px 5px;
+        margin: -1px 0px 2px 10px;
+        color: #fff;
+        border-radius: 19px;
+        float: right;
+        cursor: pointer;
+    }
 
     span.responseInfoMin::after {
         content: "\21F1";
@@ -87,6 +87,14 @@
         overflow: auto;
         width: 100%;
         resize: none;
+        display:inline-grid;
+    }
+
+    div.responseInfoMax {
+        font-family: "Lato", "Helvetica Neue", Arial, sans-serif;
+        color: rgb(0, 115, 194);
+        font-size:20px;
+        margin-top:20px;
     }
 
     div.responseBodyMax {
@@ -140,6 +148,7 @@
 @*****************************[CONTENU DE LA PAGE]**********************************************************@
 @{ 
     string defaultTop = "50";
+    int maxCharResponse = 100000;
 }
 
 
@@ -263,7 +272,14 @@
 
         @***************************[REPONSE DE LA REQUETE]***************@
         @{
-            string responseInfo = "", responseCount = "";
+            string responseInfo = "", responseCount = "",responseInfoMax = "";
+            string responseBody = Model.RespBody;
+
+            if (!string.IsNullOrEmpty(responseBody) && responseBody.Length > maxCharResponse)
+            {
+                responseBody = responseBody.Substring(0, maxCharResponse);
+                responseInfoMax = "<div class=responseInfoMax>Seuls les "+maxCharResponse+" premiers caractères sont affichés</div>";
+            }
 
             if (Model.RespStatusCode != 0)
             {
@@ -279,7 +295,7 @@
             </span>
         </div>
         <div id="responseBody" class="field__input field__body responseBody responseBodyMin">
-            <pre id="responseBodyPre" class="responseBody">@Model.RespBody</pre>
+            <pre id="responseBodyPre" class="responseBody">@responseBody</pre>@Html.Raw(responseInfoMax)
         </div>
 
     </form>
@@ -320,7 +336,7 @@
     }
 
     //Change le contexte d'accessibilité des champs de saisie de la requête en fonctiob des paramètres déjà saisis.
-    var changeParam = function (action) {
+    var changeParam = function (action,init) {
         var resourceId = document.getElementById("resourceId");
         var subresource = document.getElementById("subresource");
         switch (action.id) {
@@ -340,7 +356,7 @@
                 subresource.disabled = (!resourceId.value);
                 if (!resourceId.value) {
                     subresource.selectedIndex = 0;
-                    document.getElementById("top").value = "@defaultTop";
+                    if (!init) document.getElementById("top").value = "@defaultTop";
                 }
                 break;
             default:
@@ -354,7 +370,7 @@
 
         updateUrl();
     }
-    changeParam(document.getElementById("resourceId"));
+    changeParam(document.getElementById("resourceId"),true);
 
     //Effacement de la réponse
     var clearResponse = function () {

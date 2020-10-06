@@ -129,6 +129,17 @@ namespace app.Repositories
         }
 
         /// <summary>
+        /// Efface le cache des companies et company courante, appelé lors de la connexion utilisateur
+        /// </summary>
+        public static void ClearCacheCompanies()
+        {
+            ApplicationSettings.CompaniesCache = null;
+            ApplicationSettings.CompanyId = null;
+            ApplicationSettings.CompanyName = null;
+        }
+
+
+        /// <summary>
         /// Associe les champs d'un JToken au modèle Customer.
         /// </summary>
         /// <param name="client"> Le JToken à convertir en Customer. </param>

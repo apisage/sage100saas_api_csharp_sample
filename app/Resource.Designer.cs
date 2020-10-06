@@ -61,15 +61,6 @@ namespace app {
         }
         
         /// <summary>
-        ///   Recherche une chaîne localisée semblable à La société {name} n&apos;existe pas ou vous ne disposez pas des autorisations pour y accéder.
-        /// </summary>
-        public static string BADCOMPANY {
-            get {
-                return ResourceManager.GetString("BADCOMPANY", resourceCulture);
-            }
-        }
-        
-        /// <summary>
         ///   Recherche une chaîne localisée semblable à Attention ! Le compte Tiers {numero} existe déjà -&gt;  Intitulé : {intitule} - Type tiers : {type}.
         /// </summary>
         public static string CLIENT_ALREADY_EXIST {
@@ -115,7 +106,7 @@ namespace app {
         }
         
         /// <summary>
-        ///   Recherche une chaîne localisée semblable à Aucune société n&apos;a été trouvée pour l&apos;utilisateur courant..
+        ///   Recherche une chaîne localisée semblable à Aucune société n&apos;a été trouvée pour l&apos;utilisateur courant.
         /// </summary>
         public static string NOCOMPANIES {
             get {

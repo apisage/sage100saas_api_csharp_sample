@@ -298,6 +298,8 @@ namespace app.Controllers
             LoadParameters(repository);
 
             Customer customer = GetCustomerById(id, repository);
+            if (Customer.IsNull(customer) || Customer.IsEmpty(customer))
+                return View("Error", new Error(Resource.CLIENT_NOTFOUND));
 
             return View(customer);
         }

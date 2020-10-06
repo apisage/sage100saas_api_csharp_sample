@@ -1,9 +1,11 @@
 ﻿using System.Threading.Tasks;
+using app.Repositories;
 using Microsoft.AspNetCore.Authentication;
 using Microsoft.AspNetCore.Authentication.Cookies;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
+
 
 namespace app.Controllers
 {
@@ -13,6 +15,7 @@ namespace app.Controllers
         {
             if (!User.Identity.IsAuthenticated)
             {
+                Tools.ClearCacheCompanies();
                 await HttpContext.ChallengeAsync("SageId", new AuthenticationProperties() { RedirectUri = Url.Action("Index", "Home") });
             }
         }

@@ -175,31 +175,42 @@
             <input type="hidden" id="companyname" name="companyname" />
 
             <div class="titlepage">
-                <h2>L'application est actuellement connectée à la société : <b> @app.Settings.ApplicationSettings.CompanyName</b></h2>
+                @if (ViewBag.Companies.Count == 0)
+                {
+                    <h2>@Resource.NOCOMPANIES</h2>
+                }
+                else
+                {
+                    <h2>L'application est actuellement connectée à la société : <b> @app.Settings.ApplicationSettings.CompanyName</b></h2>
+                }
             </div>
             <div class="field_header">
                 <span class="fieldBloc" style="display:inline-block;width:100%">Choix Société</span>
                 <blockquote>
                     <table>
                         <tr>
-                            <td style="padding-right:5px">Changer de société</td>
-                            <td>
-                                @if (ViewBag.Companies.Count > 1)
-                                {
-                                    <select class="selectCompanies nofocus" id="companies" name="companies" onchange="changeCompany();">
-                                        @foreach (var companies in ViewBag.Companies)
-                                        {
-                                            <option selected="@(app.Settings.ApplicationSettings.CompanyId == (String)companies.id)" value="@companies.id">@companies.name</option>
-                                        }
-                                     </select>
+                            @if (ViewBag.Companies.Count != 0)
+                            {
+                                <td style="padding-right:5px">Changer de société</td>
+                                <td>
+                                    @if (ViewBag.Companies.Count > 1)
+                                    {
+                                        <select class="selectCompanies nofocus" id="companies" name="companies" onchange="changeCompany();">
+                                            @foreach (var companies in ViewBag.Companies)
+                                            {
+                                                <option selected="@(app.Settings.ApplicationSettings.CompanyId == (String)companies.id)" value="@companies.id">@companies.name</option>
+                                            }
+                                        </select>
 
-                                }
-                                else
-                                {
-                                   <input class="selectCompanies field__input" value="@ViewBag.Companies[0].name" readonly="readonly" />
-                                }
-                            </td>
-                            <td style="width:5%"></td>
+                                    }
+                                    else
+                                    {
+                                        <input class="selectCompanies field__input" value="@ViewBag.Companies[0].name" readonly="readonly" />
+                                    }
+                                </td>
+                                <td style="width:5%"></td>
+                            }
+
                             <td colspan="2">
                                 <input class="nofocus" type="checkbox" id="clearcache" name="clearcache" onchange="changeCompany();">
                                 <label for="clearcache">Réactualiser la liste des sociétés</label>
