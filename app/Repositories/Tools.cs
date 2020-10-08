@@ -193,7 +193,7 @@ namespace app.Repositories
             return ApplicationSettings.MetadataCache;
         }
 
-        public static Dictionary<string, List<string>> GetMetadataResources(XmlDocument document)
+        public static Dictionary<string, MainResources> GetMetadataResources(XmlDocument document)
         {
             if (ApplicationSettings.MetadataCacheResources == null)
             {
@@ -201,7 +201,8 @@ namespace app.Repositories
                 manager.AddNamespace("edmx", document.DocumentElement.NamespaceURI);
                 manager.AddNamespace("model", "http://docs.oasis-open.org/odata/ns/edm");
 
-                Dictionary<string, List<string>> resources = new Dictionary<string, List<string>>();
+                Dictionary<string, MainResources> resources = new Dictionary<string, MainResources>();
+                
                 var xpath = "/edmx:Edmx/edmx:DataServices/model:Schema/model:EntityContainer/*";
                 XmlNodeList entityContainer = document.SelectNodes(xpath, manager);
 
@@ -209,37 +210,50 @@ namespace app.Repositories
                 {
                     var resourceName = entity.Attributes["Name"].Value;
 
-                    if (entity.HasChildNodes)
+                    // Récupération des relations.
+                    var relations = entity.SelectNodes("model:NavigationPropertyBinding", manager);                    
+                    var subresource = new List<string>();
+
+                    foreach (XmlNode node in relations)
                     {
-                        // Récupération des relations.
-                        var relations = entity.SelectNodes("model:NavigationPropertyBinding", manager);                    
-                        resources[resourceName] = new List<string>();
+                        var path = node.Attributes["Path"].Value;
+                        if (!path.StartsWith("100S.Model."))
+                            subresource.Add(path);
+                    }
 
-                        foreach (XmlNode node in relations)
+                    // Récupération des sous-ressources.
+                    var nonExpandableChild = entity.LastChild;
+                    if (nonExpandableChild!=null && nonExpandableChild.Name.Equals("Annotation"))
+                    {
+                        var xpathSubresources = "model:Record/model:PropertyValue/model:Collection/model:NavigationPropertyPath/text()";
+                        var tagCollection = nonExpandableChild.SelectNodes(xpathSubresources, manager);
+
+                        foreach (XmlNode node in tagCollection)
                         {
-                            var path = node.Attributes["Path"].Value;
-                            if (!path.StartsWith("100S.Model."))
-                               resources[resourceName].Add(path);
-                        }
-
-                        // Récupération des sous-ressources.
-                        var nonExpandableChild = entity.LastChild;
-                        if (nonExpandableChild.Name.Equals("Annotation"))
-                        {
-                            var xpathSubresources = "model:Record/model:PropertyValue/model:Collection/model:NavigationPropertyPath/text()";
-                            var tagCollection = nonExpandableChild.SelectNodes(xpathSubresources, manager);
-
-                            foreach (XmlNode node in tagCollection)
-                            {
-                                if (!resources[resourceName].Exists(x => x.Equals(node.InnerText)))
-                                    resources[resourceName].Add(node.InnerText);
-                            }
+                            if (!subresource.Exists(x => x.Equals(node.InnerText)))
+                                subresource.Add(node.InnerText);
                         }
                     }
+                    resources[resourceName] = MainResources.Create(subresource, entity.Name);
+
                 }
                 ApplicationSettings.MetadataCacheResources = resources;
             }
             return ApplicationSettings.MetadataCacheResources;
+        }
+
+        public class MainResources
+        {
+            public static MainResources Create(List<string> relations, string entitytype)
+            {
+                return new MainResources
+                {
+                    Relations = relations,
+                    EntityType = entitytype
+                };
+            }
+            public List<string> Relations { get; set; }
+            public string EntityType { get; set; }
         }
 
         /// <summary>
@@ -270,7 +284,10 @@ namespace app.Repositories
             if (IsJson(res))
             {
                 var message = JsonConvert.DeserializeObject<JObject>(res);
-                return (Context + message["error"]["code"] + " (" + result.ReasonPhrase + ") - " + message["error"]["message"].ToString()).Replace("\r\n", "");
+                if (message["Message"] != null)
+                    return (Context + message["Message"]+" ("+result.ReasonPhrase+")").Replace("\r\n", "");
+                else
+                    return (Context + message["error"]["code"] + " (" + result.ReasonPhrase + ") - " + message["error"]["message"].ToString()).Replace("\r\n", "");
             }
             else
             {

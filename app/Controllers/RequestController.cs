@@ -62,8 +62,7 @@ namespace app.Controllers
                 return View("Error", new Error(Resource.NOCOMPANIES));
 
             // Récupération des ressources et sous-ressources via les metadata.
-            Dictionary<string, List<string>> resources = Tools.GetMetadataResources(Tools.GetMetadata(repository));
-            ViewBag.Resources = resources;
+            ViewBag.Resources = Tools.GetMetadataResources(Tools.GetMetadata(repository)); 
 
             return View("Index", model);
         }
@@ -97,6 +96,7 @@ namespace app.Controllers
             var data = Tools.GetJSONResult(result);
  
             //Tout ce qui est en dessous sert uniquement à formater l'affichage de la réponse dans le formulaire.
+            //Dans le contexte de l'onglet requête on n'utilise pas le retour standard erreur on laisse le code retour s'afficher dans la réponse.
             model.RespStatusCode = (int)result.StatusCode;
             model.RespStatusMessage = result.StatusCode.ToString();
 

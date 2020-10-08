@@ -1,7 +1,6 @@
 ﻿
 using app.Models;
 using app.Repositories;
-using System;
 using System.Collections.Generic;
 using System.Net.Http;
 
@@ -20,7 +19,7 @@ namespace app.Settings
         public static HttpResponseMessage CompaniesCache { get; set; }
         public static string UrlApi { get; set; }
         public static System.Xml.XmlDocument MetadataCache { get; set; }
-        public static Dictionary<string, List<string>> MetadataCacheResources { get; set; }
+        public static Dictionary<string, Tools.MainResources> MetadataCacheResources { get; set; }
         public static string MessageInfo { get; set; }
         public static Error ApiError { get; set; }
         public static List<APIRepository.HistoApis> LastAPIs { get; set; }

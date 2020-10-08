@@ -148,10 +148,18 @@
 @*****************************[CONTENU DE LA PAGE]**********************************************************@
 @{ 
     string defaultTop = "50";
+    string defaultResource = "comptes";
     int maxCharResponse = 100000;
+
+    //tableau des types d'entités principales pour différencier les collections des singletons
+    var entityTypeScript="";
+    foreach (var endpoint in ViewBag.Resources.Keys)
+    {
+        entityTypeScript+=((entityTypeScript=="")? "<script>var entityType = {":",")+ endpoint + ":'" + ViewBag.Resources[endpoint].EntityType+"'";
+    }
+    entityTypeScript += "};</script>";
+    @Html.Raw(entityTypeScript);
 }
-
-
 
 <partial name="Guide" />
 
@@ -172,7 +180,7 @@
             @***************************[SAISIE DES PARAMETRES DE L'APPEL API]***************@
             @{
                 var currentCompany = (string.IsNullOrEmpty(Model.Company) ? app.Settings.ApplicationSettings.CompanyId : Model.Company);
-                var currentResource = (string.IsNullOrEmpty(Model.Resource) ? "comptes" : Model.Resource);
+                var currentResource = (string.IsNullOrEmpty(Model.Resource) ? defaultResource : Model.Resource);
             }
             <table id="requestBuilding" width="100%">
                 <tr>
@@ -214,11 +222,11 @@
 
                         <select class="field__input valueAction" style="min-width: 100%" id="subresource" onchange="changeParam(this)" name="subresource">
                             <option selected="(@Html.Raw(Model.Subresource=="")"></option>
-                            @foreach (var element in ViewBag.Resources[currentResource])
+                            @foreach (var element in ViewBag.Resources[currentResource].Relations)
                             {
                                 <option selected="@(element==Model.Subresource)"> @element </option>
                             }
-                        </select>
+                        </select>                      
                     </td>
                 </tr>
             </table>
@@ -336,7 +344,8 @@
     }
 
     //Change le contexte d'accessibilité des champs de saisie de la requête en fonctiob des paramètres déjà saisis.
-    var changeParam = function (action,init) {
+    var changeParam = function (action, init) {
+        var resource = document.getElementById("resources").value;
         var resourceId = document.getElementById("resourceId");
         var subresource = document.getElementById("subresource");
         switch (action.id) {
@@ -348,10 +357,12 @@
                 subresource.disabled = true;
             case "resourceId":
                 var odataParamOnlyCollection = ["$filter", "$orderby", "$top", "$skip", "$count"];
+                var isNotCollection;
                 for (var i = 0; i < odataParamOnlyCollection.length; i++) {
                     paramOdata = document.getElementById(odataParamOnlyCollection[i].substr(1));
-                    paramOdata.disabled = (resourceId.value);
-                    if (resourceId.value) paramOdata.value = "";
+                    isNotCollection = (resourceId.value || entityType[resource] == "Singleton");
+                    paramOdata.disabled = isNotCollection;
+                    if (isNotCollection) paramOdata.value = "";
                 }
                 subresource.disabled = (!resourceId.value);
                 if (!resourceId.value) {
