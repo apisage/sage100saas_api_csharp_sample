@@ -239,7 +239,7 @@ namespace app.Controllers
                 /*
                 foreach (var line in piece.Value)
                 {
-                    //Si journal avec option Centralisation et ligne du compte de centralisation on ignore car ajouté automatiquement par l'Api.
+                    //Si journal avec option Centralisation et ligne du compte de centralisation on ignore car ajouté automatiquement par l'API.
             
                     if (existing.Codes[line.Code].OptContrepartie == "Centralise" && existing.Codes[line.Code].Compte == line.Compte)
                         continue;

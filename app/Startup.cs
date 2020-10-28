@@ -221,7 +221,10 @@ namespace app
 
                 var alternateUrlApi = (string)configObj["config"]["url_api"];
                 ApplicationSettings.UrlApi = (string.IsNullOrEmpty(alternateUrlApi)) ? ApplicationSettings.DefaultUrlApi : alternateUrlApi;
-                if (!ApplicationSettings.UrlApi.EndsWith("/")) ApplicationSettings.UrlApi += "/";            
+                if (!ApplicationSettings.UrlApi.EndsWith("/")) ApplicationSettings.UrlApi += "/";
+
+                var alternateUrlManagement = (string)configObj["config"]["url_management"];
+                ApplicationSettings.UrlManagement = (string.IsNullOrEmpty(alternateUrlManagement)) ? ApplicationSettings.DefaultUrlManagement : alternateUrlManagement;
             }
         }
     }

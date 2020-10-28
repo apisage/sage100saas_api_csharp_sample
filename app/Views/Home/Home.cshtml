@@ -66,7 +66,7 @@
             <h2>Le fichier client_application.json n'a pas été trouvé</h2>
         </div>
         <p>
-            Avant d'utiliser cet exemple vous devez créer une application via <b>Sage Application Registry</b> puis qualifier un <b>fichier de configuration</b> notamment en mentionnant les identifiants générés lors de la création de l'application.
+            Avant d'utiliser cet exemple vous devez créer une application via <b>Sage App Registry</b> puis qualifier un <b>fichier de configuration</b> notamment en mentionnant les identifiants générés lors de la création de l'application.
         </p>
         <p>
             Suivez les étapes suivantes pour que l'exemple puisse être utilisé :
@@ -75,13 +75,13 @@
                     Dupliquez le fichier <b>app/client_application.template.json</b> et renommez la copie en <b>app/client_application.json</b>.
                 </li>
                 <li class="step">
-                    Si vous n'avez pas encore créé une application via <b>Sage Application Registry</b> et si n'avez donc pas encore vos identifiants <b>Client ID</b> et <b>Client Secret</b> :
+                    Si vous n'avez pas encore créé une application via <b>Sage App Registry</b> et si n'avez donc pas encore vos identifiants <b>Client ID</b> et <b>Client Secret</b> :
                     rendez-vous sur
-                    <a href="https://developer.sage.com/api/100/fr/saas/quickstart/appregistrybeta/" target="_blank">Sage Application Registry</a> :
+                    <a href="https://developer.sage.com/api/100/fr/saas/quickstart/appregistrybeta/" target="_blank">Sage App Registry</a> :
                     <ul>
-                        <li>Créez votre compte ou connectez-vous.</li>                    
+                        <li>Créez votre compte ou connectez-vous.</li>
                         <li>
-                            Créez ensuite une nouvelle app dans <b>Sage Application Registry</b> avec les paramètres suivants :
+                            Créez ensuite une nouvelle app dans <b>Sage App Registry</b> avec les paramètres suivants :
                             <ul>
                                 <li><span style="width:100px;display:inline-block"><b>Type client</b></span> : <code>Web Application</code></li>
                                 <li><span style="width:100px;display:inline-block"><b>Callback URL</b></span> : <code>@urlSite/auth/callback</code></li>
@@ -215,6 +215,8 @@
                                 <input class="nofocus" type="checkbox" id="clearcache" name="clearcache" onchange="changeCompany();">
                                 <label for="clearcache">Réactualiser la liste des sociétés</label>
                             </td>
+                            <td style="width:5%"></td>
+                            <td><a class="button" href="@app.Settings.ApplicationSettings.UrlManagement" target="_blank">Bureau</a></td>
                         </tr>
                     </table>
                 </blockquote>
@@ -255,4 +257,3 @@
         spinner();
     }
 </script>
-

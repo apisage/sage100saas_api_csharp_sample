@@ -269,10 +269,10 @@ namespace app.Repositories
         }
 
         /// <summary>
-        /// Définit le message d'erreur issue du résultat d'une requête issu d'un json erreur Api ou d'une page html de type 404 par exemple.
+        /// Définit le message d'erreur issue du résultat d'une requête issu d'un json erreur API ou d'une page html de type 404 par exemple.
         /// </summary>
         /// <param name="result"> Le résultat issue d'une requête. </param>
-        //Context + result.StatusCode/ <param name="Context">Optionnellement l'url de la route de l'Api appelée</param>
+        //Context + result.StatusCode/ <param name="Context">Optionnellement l'url de la route de l'API appelée</param>
         public static string FormateErrorApi(HttpResponseMessage result,string Context=null)
         {       
             Context = (Context == null) ? "":"<div class='errorApi'>"+Context + "</div><br>";

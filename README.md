@@ -1,4 +1,4 @@
-#Exemple C# pour l'Api Sage Business Cloud
+#Exemple C# pour l'API Sage Business Cloud
 
 Portail d'aide en ligne de [l'API Sage Business Cloud](https://developer.sage.com/api/100/fr/saas)
 

@@ -142,7 +142,7 @@ namespace app.Repositories
         {
             if (!Tools.IsSuccess(result)) ApplicationSettings.ApiError = new Error(Tools.FormateErrorApi(result, HttpUtility.UrlDecode(uri)));
 
-            //Trace appels Api, le flag noInitializeHistoApis évite de perturber avec les appels Ajax asynchrones exécutés en complément duc hargemebt de la page
+            //Trace appels API, le flag noInitializeHistoApis évite de perturber avec les appels Ajax asynchrones exécutés en complément duc hargemebt de la page
             if (!noInitializeHistoApis)
             {
                 TimeSpan diff = DateTime.Now - startCallApi;
@@ -170,7 +170,7 @@ namespace app.Repositories
         /// </summary>
         /// <param name="token"> Le jeton d'authentification nécessaire. </param>
         /// <param name="companyId"> L'id company courant </param>
-        /// <param name="noInitializeHistoApis">true ne réinitialise pas la liste histo Api, utilisé pour neutraliser impact des appels Ajax asynchrones</param>
+        /// <param name="noInitializeHistoApis">true ne réinitialise pas la liste histo API, utilisé pour neutraliser impact des appels Ajax asynchrones</param>
         /// <returns></returns>
         public static APIRepository Create(string token, string companyId,bool noInitializeHistoApis=false)
         {

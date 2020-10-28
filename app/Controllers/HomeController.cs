@@ -33,10 +33,23 @@ namespace app.Controllers
                     if (ViewBag.Companies.Count == 0)
                         return View("Index");
 
-                    if (string.IsNullOrEmpty(ApplicationSettings.CompanyId))
+                    //Si la société courante n'est pas encore définie ou n'est plus dans la liste des sociétés on prend la 1ére
+                    if (string.IsNullOrEmpty(ApplicationSettings.CompanyId) || companies.SelectTokens("$[*].id").Where(id => id.ToString().Equals(ApplicationSettings.CompanyId)) == null)
                     {
                         ApplicationSettings.CompanyName = companies[0]["name"].ToString();
                         ApplicationSettings.CompanyId = companies[0]["id"].ToString();
+                    }
+                    //Sinon on réaffecte le nom au cas où il aurait été renommé 
+                    else
+                    {
+                        foreach (var company in companies)
+                        {
+                            if (company["id"].ToString() == ApplicationSettings.CompanyId)
+                            {
+                                ApplicationSettings.CompanyName = company["name"].ToString();
+                                break;
+                            }
+                        }
                     }
                }
                 else
