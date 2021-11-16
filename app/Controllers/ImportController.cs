@@ -219,10 +219,6 @@ namespace app.Controllers
                     var CommonInfosPiece = piece.Value.First();
                     var NewPieceToCreate = CreerPieceComptable.Create(
                         CommonInfosPiece.Date,
-                        CommonInfosPiece.Piece,
-                        CommonInfosPiece.Reference,
-                        CommonInfosPiece.NumeroFacture,
-                        CommonInfosPiece.Intitule,
                         NewEcrituresToCreate);
                     var CurrentJournalId=existing.Codes[CommonInfosPiece.Code].Id;
 

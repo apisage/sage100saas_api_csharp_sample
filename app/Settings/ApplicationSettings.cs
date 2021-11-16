@@ -8,8 +8,10 @@ namespace app.Settings
 {
     public static class ApplicationSettings
     {
-        public const string DefaultUrlApi = "https://api-stg-sbcc-beta.sage.fr/";
-        public const string DefaultUrlManagement = "https://stg-bureau.sage.fr";
+        public const string DefaultUrlApi = "https://api-dev-sage100saas.sagedatacloud.com";
+        public const string DefaultUrlManagement = "https://qa-app-bureausaas.sagedatacloud.com/";
+        // public const string DefaultUrlApi = "https://api-stg-sbcc-beta.sage.fr/";
+        // public const string DefaultUrlManagement = "https://stg-bureau.sage.fr";
 
         public static string Authority { get => "id-shadow.sage.com"; }
         public static string Audience { get => "fr100saas/api.pub"; }

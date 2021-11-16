@@ -66,7 +66,7 @@
             <h2>Le fichier client_application.json n'a pas été trouvé</h2>
         </div>
         <p>
-            Avant d'utiliser cet exemple vous devez créer une application via <b>Sage App Registry</b> puis qualifier un <b>fichier de configuration</b> notamment en mentionnant les identifiants générés lors de la création de l'application.
+            Avant d'utiliser cet exemple vous devez créer une application via <b>votre espace développeur</b> puis qualifier un <b>fichier de configuration</b> notamment en mentionnant les identifiants générés lors de la création de l'application.
         </p>
         <p>
             Suivez les étapes suivantes pour que l'exemple puisse être utilisé :
@@ -75,22 +75,22 @@
                     Dupliquez le fichier <b>app/client_application.template.json</b> et renommez la copie en <b>app/client_application.json</b>.
                 </li>
                 <li class="step">
-                    Si vous n'avez pas encore créé une application via <b>Sage App Registry</b> et si n'avez donc pas encore vos identifiants <b>Client ID</b> et <b>Client Secret</b> :
+                    Si vous n'avez pas encore créé une application via <b>votre espace développeur</b> et si n'avez donc pas encore vos identifiants <b>Client ID</b> et <b>Client Secret</b> :
                     rendez-vous sur
-                    <a href="https://developer.sage.com/api/100/fr/saas/quickstart/appregistrybeta/" target="_blank">Sage App Registry</a> :
+                    <a href="https://developer.sage.com/api/100/fr/saas/quickstart/become-dev/" target="_blank">Devenez Développeur Sage</a> :
                     <ul>
-                        <li>Créez votre compte ou connectez-vous.</li>
+                        <li>Créez votre compte ou connectez-vous au bureau Sage Business Cloud</li>
                         <li>
-                            Créez ensuite une nouvelle app dans <b>Sage App Registry</b> avec les paramètres suivants :
+                            Créez ensuite une nouvelle app dans <b>votre espace développeur</b> avec les paramètres suivants :
                             <ul>
-                                <li><span style="width:100px;display:inline-block"><b>Type client</b></span> : <code>Web Application</code></li>
-                                <li><span style="width:100px;display:inline-block"><b>Callback URL</b></span> : <code>@urlSite/auth/callback</code></li>
-                                <li><span style="width:100px;display:inline-block"><b>Logout URL</b></span> : <code>@urlSite</code></li>
-                                <li><span style="width:100px;display:inline-block"><b>Add API</b></span> : <code>Sage 100 Saas</code></li>
+                                <li><span style="width:140px;display:inline-block"><b>Type</b></span> : <code>Web Application</code></li>
+                                <li><span style="width:140px;display:inline-block"><b>Solution</b></span> : <code>@Resource.NAMEAPI</code></li>
+                                <li><span style="width:140px;display:inline-block"><b>Url de redirection</b></span> : <code>@urlSite/auth/callback</code></li>
+                                <li><span style="width:140px;display:inline-block"><b>Url de déconnexion</b></span> : <code>@urlSite</code></li>
                             </ul>
                         </li>
                         <li>
-                            Cliquez sur <b>Save</b> pour générer les identifiants.
+                            Cliquez sur <b>Enregistrer</b> pour générer les identifiants.
                         </li>
                     </ul>
                 </li>
@@ -98,7 +98,7 @@
                     Copiez / collez les valeurs des identifiants générés <b>Client ID</b> et <b>Client Secret</b> dans les champs <b>client_id</b> et <b>client_secret</b> du fichier <b>client_application.json</b>.
                 </li>
                 <li class="step">
-                    Cliquez sur le bouton <b>Actualiser</b> en haut de l'écran.<br />
+                    Cliquez sur le bouton <b>Actualiser</b> en haut de cet écran.<br />
                     Si le fichier<b> app/client_application.json</b> est présent, un bouton <b>Connexion</b> sera proposé.<br />
                     Vous devrez alors quitter l'application puis la relancer pour prendre en compte les identifiants renseignés.
                 </li>

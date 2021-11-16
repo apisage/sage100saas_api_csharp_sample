@@ -10,15 +10,11 @@ namespace app.Models
     public class CreerPieceComptable
     {
 
-        public static CreerPieceComptable Create(DateTime Date,String Piece, String Reference, String NumeroFacture, String Intitule,List<Writing> Ecritures )
+        public static CreerPieceComptable Create(DateTime Date,List<Writing> Ecritures )
         {
             CreerPieceComptable creerPieceComptable = new CreerPieceComptable
             {
                 Date = Date,
-                Reference = Reference,
-                NumeroFacture = NumeroFacture,
-                Piece = Piece,
-                Intitule = Intitule,
                 Ecritures = Ecritures
             };
             return creerPieceComptable;
@@ -26,18 +22,6 @@ namespace app.Models
 
         [JsonProperty("date"), DisplayFormat(ConvertEmptyStringToNull = false)]
         public DateTime Date { get; set; }
-
-        [JsonProperty("piece"), DisplayFormat(ConvertEmptyStringToNull = false)]
-        public string Piece { get; set; }
-
-        [JsonProperty("reference"), DisplayFormat(ConvertEmptyStringToNull = false)]
-        public string Reference { get; set; }
-
-        [JsonProperty("numeroFacture"), DisplayFormat(ConvertEmptyStringToNull = false)]
-        public string NumeroFacture { get; set; }
-
-        [JsonProperty("intitule"), DisplayFormat(ConvertEmptyStringToNull = true)]
-        public string Intitule { get; set; }
 
         [JsonProperty("ecritures"), DisplayFormat(ConvertEmptyStringToNull = true)]
         public List<Writing> Ecritures { get; set; }
@@ -58,7 +42,7 @@ namespace app.Models
             {
                 Code = items[1],
                 Date = Tools.ConvertFromTextToDateTime(items[2]),
-                Piece = items[3],
+                //Piece = items[3],
                 Compte = items[4],
                 NumeroTiers = items[5],
                 Intitule = items[6],
@@ -76,8 +60,9 @@ namespace app.Models
         }
 
         [JsonIgnore]
-        public string Id{get { return string.Concat(Code, '|', Piece, '|', Date.ToShortDateString()); }}
- 
+        //public string Id{get { return string.Concat(Code, '|', Piece, '|', Date.ToShortDateString()); }}
+        public string Id { get { return string.Concat(Code, '|', Piece, '|', Date.ToShortDateString()); } }
+
         [JsonIgnore]
         public string Code { get; set; }
         [JsonProperty("journal@odata.bind"), DisplayFormat(ConvertEmptyStringToNull = false)]
@@ -86,7 +71,8 @@ namespace app.Models
         [JsonProperty("date"), DisplayFormat(ConvertEmptyStringToNull = false)]
         public DateTime Date { get; set; }
         
-        [JsonProperty("piece"), DisplayFormat(ConvertEmptyStringToNull = false)]
+        //[JsonProperty("piece"), DisplayFormat(ConvertEmptyStringToNull = false)]
+        [JsonIgnore]
         public string Piece { get; set; }
 
         [JsonProperty("reference"), DisplayFormat(ConvertEmptyStringToNull = false)]
@@ -179,8 +165,8 @@ namespace app.Models
         /// <returns> Une chaîne indiquant l'erreur si détectté sinon une chaîne vide. </returns>
         public void ControlNoPiece(List<string> errors)
         {
-            if (string.IsNullOrEmpty(this.Piece) || this.Piece.Length > 13)
-                errors.Add("Le numéro de pièce est non conforme: vide ou d'une longueur de plus de 13 caractères.");
+            //if (string.IsNullOrEmpty(this.Piece) || this.Piece.Length > 13)
+            //    errors.Add("Le numéro de pièce est non conforme: vide ou d'une longueur de plus de 13 caractères.");
         }
 
         /// <summary>

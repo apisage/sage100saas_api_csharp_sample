@@ -130,7 +130,7 @@
     <value>Le fichier des données à importer n'a pas encore été chargé</value>
   </data>
   <data name="NAMEAPI" xml:space="preserve">
-    <value>API Sage Business Cloud</value>
+    <value>API Sage Business Cloud Comptabilité</value>
   </data>
   <data name="NOCOMPANIES" xml:space="preserve">
     <value>Aucune société n'a été trouvée pour l'utilisateur courant</value>
