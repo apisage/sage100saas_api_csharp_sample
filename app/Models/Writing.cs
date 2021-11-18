@@ -15,13 +15,17 @@ namespace app.Models
             CreerPieceComptable creerPieceComptable = new CreerPieceComptable
             {
                 Date = Date,
-                Ecritures = Ecritures
+                Ecritures = Ecritures,
+                extProvenance="ImportAPI"
             };
             return creerPieceComptable;
         }
 
         [JsonProperty("date"), DisplayFormat(ConvertEmptyStringToNull = false)]
         public DateTime Date { get; set; }
+
+        [JsonProperty("extProvenance"), DisplayFormat(ConvertEmptyStringToNull = false)]
+        public String extProvenance { get; set; }
 
         [JsonProperty("ecritures"), DisplayFormat(ConvertEmptyStringToNull = true)]
         public List<Writing> Ecritures { get; set; }
@@ -42,7 +46,7 @@ namespace app.Models
             {
                 Code = items[1],
                 Date = Tools.ConvertFromTextToDateTime(items[2]),
-                //Piece = items[3],
+                Piece = items[3],
                 Compte = items[4],
                 NumeroTiers = items[5],
                 Intitule = items[6],
@@ -50,7 +54,7 @@ namespace app.Models
                 Echeance = Tools.ConvertFromTextToDateTime(items[8]),
                 Debit = Double.Parse(items[9]),
                 Credit = Double.Parse(items[10]),
-                Reference="",
+                Reference="N° "+items[3],
                 NumeroFacture="",
             };
 
@@ -65,10 +69,13 @@ namespace app.Models
 
         [JsonIgnore]
         public string Code { get; set; }
-        [JsonProperty("journal@odata.bind"), DisplayFormat(ConvertEmptyStringToNull = false)]
+        
+        //[JsonProperty("journal@odata.bind"), DisplayFormat(ConvertEmptyStringToNull = false)]
+        [JsonIgnore]
         public string CodeBind { get; set; }
 
-        [JsonProperty("date"), DisplayFormat(ConvertEmptyStringToNull = false)]
+        //[JsonProperty("date"), DisplayFormat(ConvertEmptyStringToNull = false)]
+        [JsonIgnore]
         public DateTime Date { get; set; }
         
         //[JsonProperty("piece"), DisplayFormat(ConvertEmptyStringToNull = false)]

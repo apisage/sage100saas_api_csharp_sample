@@ -59,7 +59,6 @@ namespace app.Controllers
             //Chargement des paramètres (liste journaux, exercices, conditions réglement)
             Import existing = ReadParameters(repository);
             if (existing.ErrorMessage != null) return View("Error", new Error(existing.ErrorMessage));
-            ApplicationSettings.ImportExistingValues = existing;
  
             // Ces deux méthodes vont ajouter des paires clé-valeurs aux dictionnaires pieces et errors.
             var pieces = new Dictionary<string, List<Writing>>();
@@ -67,13 +66,14 @@ namespace app.Controllers
 
             // [API12] Import d'écritures - Traitement: contrôles avant import.
             ReadFile(repository, pieces, errors, existing, file);
-            ApplicationSettings.ImportErrors = errors;
-            ApplicationSettings.ImportPieces = pieces;
 
+            ApplicationSettings.ImportInfosTemp.Clear();
+            ApplicationSettings.ImportInfosTemp.Add(ApplicationSettings.CompanyId, ImportInfos.Create(existing,pieces, errors, file.FileName));
+             
             ViewBag.errors = errors;
             ViewBag.pieces = pieces;
             ViewBag.nextStep =  4 ;
-            ViewBag.filename = ApplicationSettings.ImportFileName=file.FileName;
+            ViewBag.filename = file.FileName;
             return View("Index");
 
         }
@@ -86,7 +86,7 @@ namespace app.Controllers
         /// <param name="historicalData"> Les données existantes permettant à convertir en objet Import. </param>
         /// <returns></returns
         [HttpPost("Import")]
-        public IActionResult Import(string filename)
+        public IActionResult Import()
         {
             //Contrôle token et company et création d'un repository
             var repository = APIRepository.Create(HttpContext.GetTokenAsync("access_token").Result, ApplicationSettings.CompanyId);
@@ -94,9 +94,11 @@ namespace app.Controllers
             if (repository.ErrorMessage != "") return View("Error", new Error(repository.ErrorMessage));
 
             //Chargement des paramètres (liste journaux, exercices, conditions réglement) et contenu fichier depuis stockage effectué par l'étape Controle
-            var existing = ApplicationSettings.ImportExistingValues;
-            var errors = ApplicationSettings.ImportErrors;
-            var pieces = ApplicationSettings.ImportPieces;
+
+            var existing = ApplicationSettings.ImportInfosTemp[ApplicationSettings.CompanyId].ImportExistingValues;
+            var errors = ApplicationSettings.ImportInfosTemp[ApplicationSettings.CompanyId].ImportErrors;
+            var pieces = ApplicationSettings.ImportInfosTemp[ApplicationSettings.CompanyId].ImportPieces;
+            var filename = ApplicationSettings.ImportInfosTemp[ApplicationSettings.CompanyId].ImportFileName;
 
             // [API13] Import d'écritures - Traitement: import des écritures valides.
             AddPieces(repository, pieces, errors, existing);
@@ -105,17 +107,17 @@ namespace app.Controllers
             ViewBag.errors = errors;
             ViewBag.pieces = pieces;
             ViewBag.nextStep = 5;
-            ViewBag.filename = ApplicationSettings.ImportFileName;
+            ViewBag.filename = filename;
             return View("Index");
         }
 
         //****************************[LECTURE FICHIER IMPORT ET CONTROLE COHERENCE]*******************************************************************
         /// <summary>
-        /// Lit le fichier ligne par ligne.
+        /// Lit le fichier ligne par ligne et contrôle les incohérences
         /// </summary>
         /// <param name="repository"> Le repository. </param>
         /// <param name="pieces"> Le dictionnaire de pièces contenant l'id de la pièce et la liste d'écritures. </param>
-        /// <param name="errors"> Le dictionnaire de pièces contenant l'id de la pièce et la liste d'erreurs. </param>
+        /// <param name="errors"> Le dictionna  ire de pièces contenant l'id de la pièce et la liste d'erreurs. </param>
         /// <param name="existing"> Les données préchargées (obligatoires) lors de l'arrivée sur la page d'import. </param>
         /// <param name="file"> Le fichier comptable texte importé. </param>
         private void ReadFile(APIRepository repository, Dictionary<string, List<Writing>> pieces, Dictionary<string, List<string>> errors, Import existing, IFormFile file)
@@ -139,7 +141,7 @@ namespace app.Controllers
 
                 var writing = Writing.Create(line);
 
-                // Contrôle cohérence et alimentation liste erreur.
+                // Contrôle cohérence via règles définies par l'application et alimentation liste erreur.
                 var errorLogs = new List<string>();
                 writing.ControlWriting(repository, existing, errorLogs);
 
@@ -154,17 +156,19 @@ namespace app.Controllers
 
                 // Ajout des erreurs éventuelles de l'écriture avec création préalable d'une nouvelle liste d'erreurs pour la pièce si n'existe pas déjà
                 if (errorLogs.Count > 0) AddErrorToPiece(writing.Id, linePiece, lineNumber, errorLogs, errors);
-
             }
 
-            //Maintenant qu'on a dispatché les lignes en pièces, on peut vérifier si chaque pièce est équilibrée
+            //Maintenant qu'on a dispatché les lignes en pièces, on peut vérifier si chaque pièce est équilibrée 
+            //Sachant que ControlePieces le fera aussi par sécurité
             foreach (var piece in pieces)
             {
                 if (!IsBalanced(piece))
                     AddErrorToPiece(piece.Key, "La pièce n'est pas équilibrée.", errors);
             }
 
- 
+            //contrôles supplémentaires via le paramètre controle du endpoint CreerPieceComptable
+            ControlePieces(repository, pieces, errors, existing);
+
             reader.Close();
         }
         private void AddErrorToPiece(string Key,string Message, Dictionary<string, List<string>> errors)
@@ -186,13 +190,18 @@ namespace app.Controllers
         }
 
         /// <summary>
-        /// Ajoute les écritures des pièces ne contenant pas d'erreurs.
+        /// [Ajoute et controle] ou [controle seulement (controle=true)] les écritures des pièces ne contenant pas d'erreurs.
         /// </summary>
         /// <param name="repository"> Le repository. </param>
         /// <param name="pieces"> Le dictionnaire des pièces, la clef étant l'id d'un objet Writing, la valeur étant la liste des écritures associées. </param>
         /// <param name="errors"> Le dictionnaire des erreurs, la clef étant l'id d'un objet Writing, la valeur étant la liste des erreurs associées. </param>
         /// <param name="existing"></param>
-        private void AddPieces(APIRepository repository, Dictionary<string, List<Writing>> pieces, Dictionary<string, List<string>> errors, Import existing)
+        private void ControlePieces(APIRepository repository, Dictionary<string, List<Writing>> pieces, Dictionary<string, List<string>> errors, Import existing)
+        {
+            AddPieces(repository, pieces, errors, existing, true);
+        }
+
+        private void AddPieces(APIRepository repository, Dictionary<string, List<Writing>> pieces, Dictionary<string, List<string>> errors, Import existing,bool controle=false)
         {
             string data;
             foreach (var piece in pieces)
@@ -201,56 +210,39 @@ namespace app.Controllers
                 if (errors.ContainsKey(piece.Key)) 
                     continue;
             
-                if (1 == 1)
-                {
-                    //Purge des lignes de contrepartie si journal de trésorerie avec centralisation
-                    //Calcul des ODataBind pour les propriétés concernées de chaque ligne 
-                    var NewEcrituresToCreate = new List<Writing>();
-                    foreach (var line in piece.Value)
-                    {
-                        if (existing.Codes[line.Code].OptContrepartie != "Centralise" || existing.Codes[line.Code].Compte != line.Compte)
-                        {
-                            SetOdataBindings(repository, line, existing);
-                            NewEcrituresToCreate.Add(line);
-                        }                          
-                    }
-
-                    //Création de l'entête proposition commerciale avec les éléments communs à la pièce
-                    var CommonInfosPiece = piece.Value.First();
-                    var NewPieceToCreate = CreerPieceComptable.Create(
-                        CommonInfosPiece.Date,
-                        NewEcrituresToCreate);
-                    var CurrentJournalId=existing.Codes[CommonInfosPiece.Code].Id;
-
-                    data = JsonConvert.SerializeObject(NewPieceToCreate).Replace("@odata.bind\":null", "\":null");
-                    var result = repository.Post(repository.CompanyId, "journaux('"+CurrentJournalId+ "')/creerPieceComptable", data);
-                    if (!result.IsSuccessStatusCode)
-                    {
-                        ViewBag.ErrorMessage = Tools.FormateErrorApi(result);
-                        break;
-                    }
-                }
-
-                //Ancienne méthode ligne à ligne, ne pas utiliser sauf raison précise car ne respecte pas toutes les règles métier dont le contrôle équilibre pièces
-                /*
+                //Calcul des ODataBind pour les propriétés concernées de chaque ligne 
+                var NewEcrituresToCreate = new List<Writing>();
                 foreach (var line in piece.Value)
                 {
-                    //Si journal avec option Centralisation et ligne du compte de centralisation on ignore car ajouté automatiquement par l'API.
-            
-                    if (existing.Codes[line.Code].OptContrepartie == "Centralise" && existing.Codes[line.Code].Compte == line.Compte)
-                        continue;
+                        SetOdataBindings(repository, line, existing);
+                        NewEcrituresToCreate.Add(line);                         
+                }
 
-                    SetOdataBindings(repository, line, existing);
-                    data = JsonConvert.SerializeObject(line).Replace("@odata.bind\":null", "\":null");
-                    var result = repository.Post(repository.CompanyId, "ecritures", data);
-                    if (!result.IsSuccessStatusCode)
+                //Création de l'entête proposition commerciale avec les éléments communs à la pièce
+                var CommonInfosPiece = piece.Value.First();
+
+                var NewPieceToCreate = CreerPieceComptable.Create(
+                    CommonInfosPiece.Date,
+                    NewEcrituresToCreate);
+                var CurrentJournalId=existing.Codes[CommonInfosPiece.Code].Id;
+
+                data = JsonConvert.SerializeObject(NewPieceToCreate).Replace("@odata.bind\":null", "\":null");
+                var controleParameter = (controle) ? "?controle=true" : "";
+                var result = repository.Post(repository.CompanyId, "journaux('"+CurrentJournalId+ "')/creerPieceComptable"+ controleParameter, data);
+                if (!result.IsSuccessStatusCode)
+                {
+                    if (!controle)
                     {
                         ViewBag.ErrorMessage = Tools.FormateErrorApi(result);
                         break;
                     }
+                    else
+                    {
+                        string[] errorsControle = Tools.FormateErrorApi(result,true).Split("\r\n");
+                        foreach (var error in errorsControle)
+                            AddErrorToPiece(piece.Key, error, errors);
+                    }
                 }
-                */
-                
             }
         }
 

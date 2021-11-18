@@ -209,6 +209,7 @@ namespace app.Repositories
                 foreach (XmlNode entity in entityContainer)
                 {
                     var resourceName = entity.Attributes["Name"].Value;
+                    if (resourceName.StartsWith("devise") || resourceName.StartsWith("modelesSaisie") || resourceName.StartsWith("codificationsCompteTiers")) continue;
 
                     // Récupération des relations.
                     var relations = entity.SelectNodes("model:NavigationPropertyBinding", manager);                    
@@ -218,7 +219,8 @@ namespace app.Repositories
                     {
                         var path = node.Attributes["Path"].Value;
                         if (!path.StartsWith("100S.Model."))
-                            subresource.Add(path);
+                            if (!path.StartsWith("devise"))
+                               subresource.Add(path);
                     }
 
                     // Récupération des sous-ressources.
@@ -273,7 +275,19 @@ namespace app.Repositories
         /// </summary>
         /// <param name="result"> Le résultat issue d'une requête. </param>
         //Context + result.StatusCode/ <param name="Context">Optionnellement l'url de la route de l'API appelée</param>
-        public static string FormateErrorApi(HttpResponseMessage result,string Context=null)
+
+        public static string FormateErrorApi(HttpResponseMessage result)
+        {
+            return FormateErrorApi(result, null, false);
+        }
+
+        //Variante pour récupérer erreurs métiers
+        public static string FormateErrorApi(HttpResponseMessage result, bool BusinessError = false)
+        {
+            return FormateErrorApi(result, null, BusinessError);
+        }
+
+        public static string FormateErrorApi(HttpResponseMessage result,string Context=null,bool BusinessError=false)
         {       
             Context = (Context == null) ? "":"<div class='errorApi'>"+Context + "</div><br>";
 
@@ -285,9 +299,14 @@ namespace app.Repositories
             {
                 var message = JsonConvert.DeserializeObject<JObject>(res);
                 if (message["Message"] != null)
-                    return (Context + message["Message"]+" ("+result.ReasonPhrase+")").Replace("\r\n", "");
+                    return (Context + message["Message"] + " (" + result.ReasonPhrase + ")").Replace("\r\n", "");
                 else
-                    return (Context + message["error"]["code"] + " (" + result.ReasonPhrase + ") - " + message["error"]["message"].ToString()).Replace("\r\n", "");
+                {
+                    if (BusinessError)
+                        return message["error"]["message"].ToString();
+                    else
+                        return (Context + message["error"]["code"] + " (" + result.ReasonPhrase + ") - " + message["error"]["message"].ToString()).Replace("\r\n", "");
+                }
             }
             else
             {

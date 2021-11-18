@@ -1,6 +1,9 @@
 ﻿
     <ul class="importError">
-        @foreach (var error in ViewBag.errors)
+        @{
+            Dictionary<string, List<string>> errors = new Dictionary<string, List<string>>(ViewBag.errors);
+        }
+        @foreach (var error in errors.OrderBy(x => x.Key))
         {
             if (error.Key != "STRUCTURE") continue;
             <li class="importPiecesKo importError">
@@ -13,7 +16,7 @@
                 </ul>
             </li>
         }
-        @foreach (var error in ViewBag.errors)
+        @foreach (var error in errors.OrderBy(x => x.Key))
         {
             if (error.Key == "STRUCTURE") continue;
             <li class="importPiecesKo importError">

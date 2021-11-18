@@ -31,10 +31,6 @@ namespace app.Settings
         public static List<APIRepository.HistoApis> LastAPIs { get; set; }
 
         //Sauvegardes temporaires entre contrôle et import pour module Import
-        public static Import ImportExistingValues { get; set; }
-        public static Dictionary<string, List<Writing>> ImportPieces { get; set; }
-        public static Dictionary<string, List<string>> ImportErrors { get; set; }
-        public static string ImportFileName { get; set; }
-
+        public static Dictionary<string, ImportInfos> ImportInfosTemp = new Dictionary<string, ImportInfos>();
     }
 }

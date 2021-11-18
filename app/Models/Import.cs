@@ -34,4 +34,23 @@ namespace app.Models
         public string OptContrepartie { get; set; }
         public string Compte { get; set; }
     }
+
+    public class ImportInfos
+    {
+        public static ImportInfos Create(Import ImportExistingValues, Dictionary<string, List<Writing>> ImportPieces, Dictionary<string, List<string>> ImportErrors, string ImportFileName)
+        {
+            return new ImportInfos
+            {
+                ImportExistingValues = ImportExistingValues,
+                ImportPieces = ImportPieces,
+                ImportErrors = ImportErrors,
+                ImportFileName = ImportFileName
+            };
+        }
+
+        public Import ImportExistingValues { get; set; }
+        public Dictionary<string, List<Writing>> ImportPieces { get; set; }
+        public Dictionary<string, List<string>> ImportErrors { get; set; }
+        public string ImportFileName { get; set; }
+    }
 }
