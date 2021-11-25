@@ -21,7 +21,7 @@
                 <select class="field__input" id="comptePrincipal" name="comptePrincipal">
                     @foreach (var account in ViewBag.Accounts)
                     {
-                        <option selected="@(Model.ComptePrincipal==(string)account.numero)" value="@account.id]">@account.numero</option>
+                        <option selected="@(Model.ComptePrincipal==(string)account.numero)" value="@account.id">@account.numero</option>
                     }
                 </select>
             </div>
