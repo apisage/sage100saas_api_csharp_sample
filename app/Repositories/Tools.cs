@@ -195,7 +195,7 @@ namespace app.Repositories
 
         public static Dictionary<string, MainResources> GetMetadataResources(XmlDocument document)
         {
-            if (ApplicationSettings.MetadataCacheResources == null)
+            if (1==1 || ApplicationSettings.MetadataCacheResources == null)
             {
                 XmlNamespaceManager manager = new XmlNamespaceManager(document.NameTable);
                 manager.AddNamespace("edmx", document.DocumentElement.NamespaceURI);
@@ -209,7 +209,9 @@ namespace app.Repositories
                 foreach (XmlNode entity in entityContainer)
                 {
                     var resourceName = entity.Attributes["Name"].Value;
-                    if (resourceName.StartsWith("devise") || resourceName.StartsWith("modelesSaisie") || resourceName.StartsWith("codificationsCompteTiers")) continue;
+                    if (resourceName.StartsWith("devise") ||
+                        resourceName.StartsWith("modelesSaisie") || 
+                        resourceName.StartsWith("codificationsCompteTiers")) continue;
 
                     // Récupération des relations.
                     var relations = entity.SelectNodes("model:NavigationPropertyBinding", manager);                    
@@ -219,7 +221,9 @@ namespace app.Repositories
                     {
                         var path = node.Attributes["Path"].Value;
                         if (!path.StartsWith("100S.Model."))
-                            if (!path.StartsWith("devise"))
+                            if (!path.StartsWith("devise") &&
+                                !path.StartsWith("modeleSaisie")
+                               )
                                subresource.Add(path);
                     }
 
@@ -233,6 +237,8 @@ namespace app.Repositories
                         foreach (XmlNode node in tagCollection)
                         {
                             if (!subresource.Exists(x => x.Equals(node.InnerText)))
+                                if (node.InnerText == "bornes"
+                                    )continue;
                                 subresource.Add(node.InnerText);
                         }
                     }
