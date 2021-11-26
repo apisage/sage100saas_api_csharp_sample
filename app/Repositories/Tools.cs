@@ -195,7 +195,7 @@ namespace app.Repositories
 
         public static Dictionary<string, MainResources> GetMetadataResources(XmlDocument document)
         {
-            if (1==1 || ApplicationSettings.MetadataCacheResources == null)
+            if (ApplicationSettings.MetadataCacheResources == null)
             {
                 XmlNamespaceManager manager = new XmlNamespaceManager(document.NameTable);
                 manager.AddNamespace("edmx", document.DocumentElement.NamespaceURI);
@@ -212,7 +212,7 @@ namespace app.Repositories
                     if (resourceName.StartsWith("devise") ||
                         resourceName.StartsWith("modelesSaisie") || 
                         resourceName.StartsWith("codificationsCompteTiers")) continue;
-
+                 
                     // Récupération des relations.
                     var relations = entity.SelectNodes("model:NavigationPropertyBinding", manager);                    
                     var subresource = new List<string>();
@@ -237,9 +237,13 @@ namespace app.Repositories
                         foreach (XmlNode node in tagCollection)
                         {
                             if (!subresource.Exists(x => x.Equals(node.InnerText)))
-                                if (node.InnerText == "bornes"
-                                    )continue;
+                            {
+                                if (node.InnerText == "bornes" ||
+                                    (resourceName == "tiers" && node.InnerText == "comptes")
+                                    ) 
+                                    continue;
                                 subresource.Add(node.InnerText);
+                            }
                         }
                     }
                     resources[resourceName] = MainResources.Create(subresource, entity.Name);
